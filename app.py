@@ -303,11 +303,9 @@ def index():
     featured_df["房廳衛"] = featured_df["房/廳/衛"].apply(format_layout)
     featured_data = featured_df.head(8).fillna("-").to_dict(orient="records")
 
-    
     df = df_raw.copy()
     df["房/廳/衛"] = df["房/廳/衛"].apply(format_layout)
     df['房廳衛'] = df['房/廳/衛'].apply(format_layout)
-
 
     # 房間數從房/廳/衛欄位抽取（例：3房2廳2衛 -> 3）
     if "房/廳/衛" in df.columns:
@@ -355,13 +353,24 @@ def index():
     except:
         pass
 
-    # 關鍵字篩選（範例使用「網址」及「房屋標題」欄位）
+    # 關鍵字篩選，多欄位搜尋
+    search_cols = [
+        "網址", "房屋標題", "區域", "委託總價",
+        "鄰近市場", "鄰近學校", "生活圈",
+        "社區/建物", "環境特色"
+    ]
+
     if keyword.strip():
-        kw = keyword.strip()
-        df = df[
-            df["網址"].astype(str).str.contains(kw, case=False, na=False) |
-            df["房屋標題"].astype(str).str.contains(kw, case=False, na=False)
-        ]
+        keyword_lower = keyword.strip().lower()
+
+        def row_contains_keyword(row):
+            for col in search_cols:
+                if col in df.columns:
+                    if keyword_lower in str(row[col]).lower():
+                        return True
+            return False
+
+        df = df[df.apply(row_contains_keyword, axis=1)]
 
     total_records = len(df)
 
@@ -731,11 +740,25 @@ def admin_featured():
     df = df_raw.copy()
     df["房/廳/衛"] = df["房/廳/衛"].apply(format_layout)
     df['房廳衛'] = df['房/廳/衛'].apply(format_layout)
-    
+
+    search_cols = [
+        "房屋標題", "區域", "委託總價",
+        "鄰近市場", "鄰近學校", "生活圈",
+        "社區/建物", "環境特色"
+    ]
+
     # 關鍵字篩選
     if keyword:
-        df = df[df["地址"].astype(str).str.contains(keyword, case=False, na=False) |
-                df.get("標題", df["地址"]).astype(str).str.contains(keyword, case=False, na=False)]
+        keyword_lower = keyword.lower()
+
+        def row_contains_keyword(row):
+            for col in search_cols:
+                if col in df.columns:
+                    if keyword_lower in str(row[col]).lower():
+                        return True
+            return False
+
+        df = df[df.apply(row_contains_keyword, axis=1)]
 
     # 強銷篩選
     if "強銷" not in df.columns:
@@ -752,6 +775,7 @@ def admin_featured():
     data = df.fillna("-").to_dict(orient='records')
 
     return render_template("admin_featured.html", data=data, keyword=keyword, only_featured=only_featured)
+
 
 @app.route('/admin/toggle_featured/<int:item_id>', methods=['POST'])
 def toggle_featured(item_id):
