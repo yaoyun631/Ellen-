@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}預約看房 / 諮詢{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2>預約看房 / 諮詢</h2>
+
+  {% if success_message %}
+  <div class="alert alert-success">{{ success_message }}</div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('contact') }}">
+    <div class="mb-3">
+      <label class="form-label">姓名</label>
+      <input type="text" class="form-control" name="name" required
+        value="{{ form_data.name if form_data else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">電話</label>
+      <input type="tel" class="form-control" name="phone" required
+        value="{{ form_data.phone if form_data else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">想諮詢的內容</label>
+      <textarea class="form-control" name="message" rows="4" required>{{ form_data.message if form_data else '' }}</textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">驗證碼</label>
+      <div class="d-flex align-items-center">
+        <img src="{{ url_for('captcha_image') }}" alt="驗證碼" class="mr-2" style="height: 40px;" onclick="this.src='{{ url_for('captcha_image') }}?'+Math.random();">
+        <input type="text" class="form-control" name="captcha_input" required placeholder="請輸入圖中數字" style="max-width: 150px;">
+      </div>
+      {% if error_message %}
+      <small class="text-danger">{{ error_message }}</small>
+      {% endif %}
+    </div>
+    <button type="submit" class="btn btn-primary">送出</button>
+  </form>
+</div>
+{% endblock %}

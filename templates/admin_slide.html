@@ -1,0 +1,46 @@
+<!-- templates/admin_slide.html -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>管理輪播圖片</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>輪播圖片管理</h1>
+    <a href="{{ url_for('admin_dashboard') }}">回管理首頁</a>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <h2>目前圖片</h2>
+    <form method="post" action="{{ url_for('admin_slide') }}">
+          <ul>
+            {% for img in slide_images %}
+            <li>
+              <img src="{{ url_for('static', filename='images/carousel/' ~ img) }}" alt="{{ img }}" style="width: 150px; height: auto;"/>
+              <form method="post" action="{{ url_for('admin_slide') }}" style="display:inline;">
+                <input type="hidden" name="filename" value="{{ img }}">
+                <button type="submit" name="delete" value="刪除">刪除</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+
+    </form>
+
+    <h2>上傳新圖片</h2>
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('admin_slide') }}">
+        <input type="file" name="file" accept=".jpg,.jpeg,.png,.gif" required>
+        <button type="submit" name="upload" value="上傳">上傳</button>
+    </form>
+
+</body>
+</html>

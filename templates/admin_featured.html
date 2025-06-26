@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>強銷物件管理</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    .search-box { margin-bottom: 20px; }
+    input[type="text"] { padding: 8px; width: 300px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .card {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      width: 240px;
+      cursor: pointer;
+      position: relative;
+      transition: box-shadow 0.3s ease;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .card img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 6px 6px 0 0;
+    }
+    .card .info {
+      padding: 10px;
+      font-size: 14px;
+    }
+    .card .address {
+      font-weight: bold;
+      margin-bottom: 6px;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card .meta {
+      color: #555;
+      margin-bottom: 4px;
+    }
+    .card .details {
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .card .price {
+      color: #fa782a;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    .card .featured-toggle {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 32px;
+      color: #ccc;
+      user-select: none;
+      transition: color 0.3s ease;
+    }
+    .card .featured-toggle.active {
+      color: #fa782a;
+    }
+  </style>
+</head>
+<body>
+  <h1>強銷物件管理</h1>
+
+  <form method="get" class="search-box">
+    <input type="text" name="keyword" placeholder="搜尋地址或標題" value="{{ keyword }}">
+    <label style="margin-left: 10px;">
+      <input type="checkbox" name="only_featured" value="1" {% if only_featured %}checked{% endif %}>
+      只看強銷物件
+    </label>
+    <button type="submit">搜尋</button>
+  </form>
+
+  <div class="grid">
+    {% for item in data %}
+      <div class="card" data-id="{{ item.id }}">
+        <img src="{{ item.image_url or url_for('static', filename='images/no-image.png') }}" alt="房屋圖片" />
+        <div class="featured-toggle {% if item.強銷 == '是' %}active{% endif %}" 
+             onclick="toggleFeatured(event, '{{ item.id }}')" title="切換強銷">♥</div>
+        <div class="info">
+          <div class="address" title="{{ item.地址 }}">{{ item.房屋標題 or item.地址 }}</div>
+          <div class="meta">
+            {{ item.區域 or '-' }} | {{ item.房型 or '-' }} | {{ item.房廳衛 or '-' }}
+          </div>
+          <div class="details">
+            {% if item.屋齡 is number %}
+              {{ item.屋齡 }}年
+            {% else %}
+              -
+            {% endif %}
+            | 
+            {% if item.登記坪數 is number %}
+              {{ item.登記坪數|round(1) }}坪
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="price">
+            {% if item.委託總價 is number %}
+              {{ item.委託總價|int }} 萬
+            {% else %}
+              無資料
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <p>找不到符合條件的物件。</p>
+    {% endfor %}
+  </div>
+
+<script>
+function toggleFeatured(event, itemId) {
+  event.stopPropagation();
+  const icon = event.currentTarget;
+
+  fetch('/admin/toggle_featured/' + itemId, {
+    method: 'POST'
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("HTTP status " + response.status);
+    return response.json();
+  })
+  .then(data => {
+    if (data.status === 'success') {
+      if (data.new_value === '是') icon.classList.add('active');
+      else icon.classList.remove('active');
+    } else {
+      alert('更新失敗: ' + data.message);
+    }
+  })
+  .catch(error => {
+    alert('網路錯誤: ' + error.message);
+  });
+}
+
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', (e) => {
+    if (e.target.classList.contains('featured-toggle')) return;
+    const id = card.getAttribute('data-id');
+    window.location.href = '/admin/featured/' + id;
+  });
+});
+</script>
+
+</body>
+</html>

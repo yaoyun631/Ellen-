@@ -1,0 +1,184 @@
+:root {
+  --main-color: #fa782a;
+  --accent-color: #aa837c;
+  --deep-color: #a3570a;
+  --light-bg: #fef9f6;
+  --gray-text: #555;
+}
+
+
+/* 預設按鈕等焦點樣式，改成橘色框線 */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+a:focus {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+  box-shadow: none; /* 取消原本可能的藍色陰影 */
+}
+
+/* 也可以針對bootstrap按鈕，改變focus時的陰影色 */
+.btn:focus, 
+.btn:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 0.25rem rgba(250, 120, 42, 0.5);
+}
+
+body {
+  background-color: var(--light-bg);
+  color: var(--gray-text);
+  font-family: 'Noto Sans TC', '微軟正黑體', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* 標題樣式 */
+h1, h2, h3, h5 {
+  color: var(--deep-color);
+  font-weight: 700;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+
+/* 卡片樣式 */
+.card {
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(170, 131, 124, 0.15);
+  border: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(170, 131, 124, 0.3);
+}
+.card-img-top {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+/* 按鈕樣式 */
+.btn-primary {
+  background-color: var(--main-color);
+  border-color: var(--main-color);
+  font-weight: bold;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--deep-color);
+  border-color: var(--deep-color);
+  outline: none;
+}
+
+/* 導覽列與頁尾背景 */
+.navbar, footer {
+  background-color: #e8e8e8;
+}
+
+/* 導覽列連結共通樣式 */
+.nav-link {
+  position: relative;
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border: none; /* 取消邊框 */
+  border-radius: 6px; /* 可保留圓角，或刪除 */
+  color: var(--deep-color);
+  font-weight: 600;
+  transition: color 0.3s ease;
+  background-color: transparent; /* 取消背景 */
+}
+
+/* 英文文字，初始隱藏 */
+.nav-link::after {
+  content: attr(data-en);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--main-color);
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* 滑鼠移入時：中文字透明，顯示英文，無背景無邊框 */
+.nav-link:hover {
+  color: transparent;
+  background-color: transparent; /* 不變背景 */
+  border: none; /* 無邊框 */
+  cursor: pointer;
+}
+
+/* 顯示英文 */
+.nav-link:hover::after {
+  opacity: 1;
+}
+
+/* active 狀態：無方框，正常文字顏色 */
+.nav-link.active {
+  color: var(--deep-color);
+  font-weight: 700;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* active 狀態滑鼠移入：同樣不改變背景和邊框，只顯示英文 */
+.nav-link.active:hover {
+  color: transparent;
+  background-color: transparent;
+  border: none;
+}
+.nav-link.active:hover::after {
+  opacity: 1;
+}
+
+
+/* 表格 hover */
+table tbody tr:hover {
+  background-color: #fff8f2;
+}
+
+/* 表單標籤 */
+.form-label {
+  font-weight: 600;
+  color: var(--deep-color);
+}
+
+/* 價格強調字 */
+.price-highlight {
+  font-family: 'Noto Serif TC', serif;
+  color: var(--deep-color);
+  font-weight: bold;
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+}
+
+/* 聚焦樣式 */
+a:focus, button:focus {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.nav-link:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.featured-toggle {
+  color: #ccc;
+  cursor: pointer;
+  font-size: 28px;
+  user-select: none;
+  transition: color 0.3s;
+}
+.featured-toggle.active {
+  color: #fa782a; /* 橘色表示已設強銷 */
+  text-shadow: 0 0 5px #fa782a;
+}

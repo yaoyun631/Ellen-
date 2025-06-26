@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}後台主控台{% endblock %}
+{% block content %}
+<h1>後台主控台</h1>
+<ul>
+  <li><a href="{{ url_for('add_video') }}">影片管理</a></li>
+  <li><a href="{{ url_for('blog.admin_blog') }}">文章管理</a></li>
+  <li><a href="{{ url_for('admin_contacts') }}">預約訊息管理
+      {% if unread_count and unread_count > 0 %}
+        <span class="badge bg-danger">{{ unread_count }}</span>
+      {% endif %}
+    </a>
+  </li>
+
+  <li><a href="{{ url_for('admin_excel') }}">首頁 Excel 檔案管理</a></li>
+  <li><a href="{{ url_for('admin_slide') }}">首頁輪播圖管理</a></li>
+  <li><a href="{{ url_for('admin_featured') }}">強銷物件管理</a></li>
+
+
+</ul>
+{% endblock %}

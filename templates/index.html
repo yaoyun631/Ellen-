@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% block title %}Ellen帶你找家{% endblock %}
+{% block content %}
+<!-- 輪播圖片 -->
+<div id="carouselExample" class="carousel slide mb-4" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    {% for img in slide_images %}
+    <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+      <img src="{{ url_for('static', filename='images/carousel/' ~ img) }}"
+           class="d-block w-100"
+           style="height: 500px; object-fit: cover;"
+           alt="Slide {{ loop.index }}">
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- 🔥 Ellen 強銷物件區塊 -->
+{% if featured_data %}
+<div class="my-5">
+  <h2 class="mb-3" style="color: #a3570a;">🔥 Ellen 強銷專區</h2>
+  <div class="position-relative">
+    <!-- 左箭頭 -->
+    <button id="leftArrow" class="btn btn-outline-secondary position-absolute top-50 start-0 translate-middle-y z-1" onclick="scrollFeatured(-1)">
+      ‹
+    </button>
+
+    <!-- 可橫向滾動的容器 -->
+    <div id="featuredScrollContainer" class="d-flex overflow-auto" style="scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;">
+      <style>
+        #featuredScrollContainer::-webkit-scrollbar {
+          display: none;
+        }
+      </style>
+      {% for row in featured_data %}
+      <div class="card me-3 shadow-sm border-danger" style="min-width: 260px; flex: 0 0 auto;">
+        <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
+          <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}"
+               class="card-img-top"
+               style="object-fit: cover; height: 180px;" alt="圖片">
+          <div class="card-body">
+            <h5 class="card-title">{{ row["\u623f\u5c4b\u6a19\u984c"] or row["\u5730\u5740"] }}</h5>
+            <div style="font-weight: 500; color: #555; margin-bottom: 0.5rem;">
+              {{ row.區域 or '-' }} | {{ row.房型 or '-' }}
+            </div>
+            <div style="font-weight: 500; font-size: 0.9rem; color: #333; margin-bottom: 1rem;">
+              {% if row.屋齡 is number %}{{ row.屋齡|int }}年{% else %}-{% endif %} | 
+              {% if row.發送平數 is number %}{{ row.發送平數|round(1) }}坪{% else %}-{% endif %} |
+              {{ row.房廳衛 or '-' }}
+            </div>
+            <div style="font-weight: 700; font-size: 1.3rem;">
+              <span style="color: red; font-size: 1.6rem;">
+                {% if row.委託總價 is number %}
+                  {{ row.委託總價|int }}
+                {% else %}
+                  無資料
+                {% endif %}
+              </span>
+              <span style="margin-left: 2px;">萬</span>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 右箭頭 -->
+    <button id="rightArrow" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y z-1" onclick="scrollFeatured(1)">
+      ›
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- 🔁 Ellen 強銷滑動區塊 JavaScript -->
+<script>
+  const container = document.getElementById('featuredScrollContainer');
+  const leftArrow = document.getElementById('leftArrow');
+  const rightArrow = document.getElementById('rightArrow');
+
+  function updateArrowVisibility() {
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    leftArrow.style.display = container.scrollLeft > 0 ? 'block' : 'none';
+    rightArrow.style.display = container.scrollLeft < maxScrollLeft ? 'block' : 'none';
+  }
+
+  function scrollFeatured(direction) {
+    const card = container.querySelector('.card');
+    if (!card) return;
+    const cardWidth = card.offsetWidth + parseInt(getComputedStyle(card).marginRight);
+    const scrollAmount = cardWidth * 4;
+
+    container.scrollBy({
+      left: direction * scrollAmount,
+      behavior: 'smooth'
+    });
+
+    setTimeout(updateArrowVisibility, 600);
+  }
+
+  window.addEventListener('load', updateArrowVisibility);
+  container.addEventListener('scroll', updateArrowVisibility);
+
+  setInterval(() => {
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    if (container.scrollLeft >= maxScrollLeft - 10) {
+      container.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      scrollFeatured(1);
+    }
+  }, 5000);
+</script>
+
+<!-- 查詢表單 -->
+<div class="p-4 mb-5" style="background-color: #CABAA1; border: 1px solid #eee; border-radius: 8px;">
+  <h2 class="mb-4">🏠 物件查詢</h2>
+  <form method="GET" id="searchForm">
+    <div class="row g-3">
+      <!-- 區域勾選 -->
+      <div class="col-12">
+        <label class="form-label">區域</label><br />
+        <label class="me-3">
+          <input type="checkbox" id="area_all" onchange="toggleAll(this)"> 全部
+        </label>
+        {% for d in taichung_districts %}
+        <label class="me-3">
+          <input type="checkbox" name="areas" value="{{ d }}" {% if d in selected_areas %}checked{% endif %}> {{ d }}
+        </label>
+        {% endfor %}
+        <label class="me-3">
+          <input type="checkbox" name="areas" value="其他" {% if '其他' in selected_areas %}checked{% endif %}> 其他
+        </label>
+      </div>
+
+      <!-- 房型 -->
+      <div class="col-12 mt-3">
+        <label class="form-label">房型</label><br />
+        {% for t in 房型選項 %}
+        <label class="me-2">
+          <input type="checkbox" name="types" value="{{ t }}" {% if t in selected_types %}checked{% endif %}> {{ t }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- 格局 -->
+      <div class="col-6 col-md-2">
+        <label for="room_min" class="form-label">格局最小(房)</label>
+        <input type="number" step="1" min="0" name="room_min" id="room_min" class="form-control" value="{{ room_min }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="room_max" class="form-label">格局最大(房)</label>
+        <input type="number" step="1" min="0" name="room_max" id="room_max" class="form-control" value="{{ room_max }}">
+      </div>
+
+      <!-- 總價 -->
+      <div class="col-6 col-md-2">
+        <label for="price_min" class="form-label">總價最小(萬)</label>
+        <input type="number" step="0.1" min="0" name="price_min" id="price_min" class="form-control" value="{{ price_min }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="price_max" class="form-label">總價最大(萬)</label>
+        <input type="number" step="0.1" min="0" name="price_max" id="price_max" class="form-control" value="{{ price_max }}">
+      </div>
+
+      <!-- 關鍵字 -->
+      <div class="col-12 col-md-6">
+        <label for="keyword" class="form-label">關鍵字（地址）</label>
+        <input type="text" name="keyword" id="keyword" class="form-control" value="{{ keyword }}">
+      </div>
+
+      
+              <!-- 排序欄位 -->
+      <div class="col-md-3">
+        <label for="sort_by" class="form-label">排序欄位</label>
+        <select name="sort_by" id="sort_by" class="form-select">
+          <option value="委託總價" {% if sort_by == "委託總價" %}selected{% endif %}>總價</option>
+          <option value="房間數" {% if sort_by == "房間數" %}selected{% endif %}>格局(房數)</option>
+          <option value="屋齡" {% if sort_by == "屋齡" %}selected{% endif %}>屋齡</option>
+          <option value="登記坪數" {% if sort_by == "登記坪數" %}selected{% endif %}>登記坪數</option>
+        </select>
+      </div>
+
+      <!-- 排序方向 -->
+      <div class="col-md-3">
+        <label for="sort_order" class="form-label">排序方向</label>
+        <select name="sort_order" id="sort_order" class="form-select">
+          <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>由大到小</option>
+          <option value="asc" {% if sort_order == "asc" %}selected{% endif %}>由小到大</option>
+        </select>
+      </div>
+      <div class="col-12 text-center">
+        <button type="submit" class="btn mt-3" style="background-color: #fa782a; color: white; border: none;">
+          查詢
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<p>符合條件資料筆數：{{ total_records }}</p>
+
+<!-- 右上角顯示模式切換 -->
+<div style="position: fixed; top: 90px; right: 20px; z-index: 1000;">
+  <button id="toggleViewBtn" class="btn btn-outline-dark btn-lg" title="切換顯示模式" style="font-size: 1.5rem; font-weight: bold;">
+    #
+  </button>
+</div>
+
+
+
+
+<style>
+  /* 整列滑鼠移動時圖片有放大陰影 */
+  .card-horizontal:hover img {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
+    transition: box-shadow 0.3s, transform 0.3s;
+  }
+
+  /* 預設圖片過渡效果 */
+  .card-horizontal img {
+    transition: box-shadow 0.3s, transform 0.3s;
+  }
+
+  /* 只有標題滑鼠移動時才有底線 */
+  .card-horizontal h5:hover {
+    text-decoration: underline;
+    transition: text-decoration 0.2s;
+    cursor: pointer;
+  }
+</style>
+
+<!-- 表格顯示區 -->
+<div id="cardListView">
+  {% for row in data %}
+  <div class="card-horizontal p-3 border-top border-bottom bg-white"
+       style="display: flex; margin: 0; border-left: none; border-right: none; border-radius: 0; cursor: pointer;"
+       onclick="window.open('{{ row.網址 or '#' }}', '_blank')">
+
+    <!-- 圖片 -->
+    <div style="flex-shrink: 0;">
+      <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}"
+           alt="圖片"
+           style="width: 200px; height: 150px; object-fit: cover; border-radius: 4px;">
+    </div>
+
+    <!-- 資訊區塊 -->
+    <div style="flex-grow: 1; padding-left: 12px;">
+      <!-- 標題 -->
+      <h5 class="mb-1"
+          style="font-size: 1.5rem; font-weight: bold;">
+        {{ row['房屋標題'] or row['地址'] }}
+      </h5>
+
+      <div style="color: #444; font-size: 1rem;">
+        <span style="margin-right: 8px;">{{ row['房型'] or '-' }}</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">{{ row['房廳衛'] or '-' }}</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">登記坪數 {{ row['登記坪數'] or '-' }}坪</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">主建 {{ row['主建物坪'] or '-' }}坪</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">屋齡 {{ row['屋齡'] or '-' }}年</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">樓層 {{ row['樓別/樓高'] or '-' }}</span><span style="margin-right: 16px;">|</span>
+        <span style="margin-right: 8px;">{{ row['車位型式'] or '-' }}</span>
+      </div>
+
+      <div style="font-size: 1.1rem; color: gray;">
+        {{ row['區域'] or '-' }} - {{ row['地址'] or '' }}
+      </div>
+    </div>
+
+    <!-- 價格區 -->
+    <div style="flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 100px;">
+      <div style="font-size: 1.6rem; font-weight: bold; color: red;">
+        {% if row.委託總價 is number %}
+          {{ row.委託總價|int }} 萬
+        {% else %}
+          -
+        {% endif %}
+      </div>
+      <div style="font-size: 0.85rem; color: #888;">
+        {% if row['單價'] is number %}
+          {{ row['單價']|round(2) }} 萬/坪
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+
+<!-- 方格顯示區 -->
+<div id="gridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4" style="display:none;">
+  {% for row in data %}
+  <div class="col">
+    <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
+      <div class="card h-100 shadow-sm">
+        <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}" class="card-img-top" alt="圖片" style="object-fit: cover; height: 180px;">
+        <div class="card-body d-flex flex-column">
+          <h3 style="font-family: 微軟正黑體 Light; font-weight: bold; font-size: 1.25rem; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ row['房屋標題'] or row['地址'] }}">
+  {{ row['房屋標題'] or row['地址'] }}
+</h3>
+
+          <div class="caption" style="font-weight: 500; color: #555; margin-bottom: 0.5rem;">
+            {{ row.區域 or '-' }} | {{ row.房型 or '-' }}
+          </div>
+          <div class="title" style="font-weight: 500; font-size: 0.9rem; color: #333; margin-bottom: 1rem;">
+            {% if row.屋齡 is number %}
+              {{ row.屋齡|int }}年
+            {% else %}
+              -
+            {% endif %} | 
+            {% if row.登記坪數 is number %}
+              {{ row.登記坪數|round(1) }}坪
+            {% else %}
+              -
+            {% endif %}
+            | {{ row.房廳衛 or '-' }}
+          </div>
+          <div class="mt-auto d-flex justify-content-end align-items-end">
+            <span style="font-weight: 700; font-size: 1.3rem;">
+              <span style="color: red; font-size: 1.6rem;">
+                {% if row.委託總價 is number %}
+                  {{ row.委託總價|int }}
+                {% else %}
+                  無資料
+                {% endif %}
+              </span>
+              <span style="color: inherit; font-size: 1.3rem; margin-left: 2px;">萬</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 分頁按鈕 -->
+<nav aria-label="Page navigation example" class="mt-4 d-flex justify-content-center align-items-center gap-3">
+  <button class="btn btn-outline-primary" id="prevBtn" {% if page <= 1 %}disabled{% endif %} onclick="changePage({{ page -1 }})">上一頁</button>
+  <span>第 {{ page }} 頁 / 共 {{ total_pages }} 頁</span>
+  <button class="btn btn-outline-primary" id="nextBtn" {% if page >= total_pages %}disabled{% endif %} onclick="changePage({{ page +1 }})">下一頁</button>
+</nav>
+
+<script>
+  // 切換全部區域勾選
+  function toggleAll(source) {
+    const checkboxes = document.querySelectorAll('input[name="areas"]');
+    checkboxes.forEach(cb => {
+      cb.checked = source.checked;
+    });
+  }
+
+  // 切換顯示模式
+  const toggleBtn = document.getElementById('toggleViewBtn');
+  const cardListView = document.getElementById('cardListView');
+  const gridView = document.getElementById('gridView');
+
+  // 初始顯示模式，可用 localStorage 紀錄
+  let isTableView = localStorage.getItem('isTableView');
+  if (isTableView === null) {
+    isTableView = true; // 預設表格顯示
+  } else {
+    isTableView = (isTableView === 'true');
+  }
+  updateView();
+
+  toggleBtn.addEventListener('click', () => {
+    isTableView = !isTableView;
+    localStorage.setItem('isTableView', isTableView);
+    updateView();
+  });
+
+function updateView() {
+  const toggleBtn = document.getElementById("toggleViewBtn");
+
+  if (isTableView) {
+    cardListView.style.display = 'block';
+    gridView.style.display = 'none';
+    toggleBtn.textContent = "#";  // 井字表示表格模式
+  } else {
+    cardListView.style.display = 'none';
+    gridView.style.display = 'flex';
+    toggleBtn.textContent = "≡";  // 三條線表示方格模式
+  }
+}
+
+
+
+  // 分頁跳轉（改成直接跳網址，避免 method not allowed）
+  function changePage(targetPage) {
+    const url = new URL(window.location);
+    url.searchParams.set("page", targetPage);
+    window.location.href = url.toString();
+  }
+
+  
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+
+{% endblock %}

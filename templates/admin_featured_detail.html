@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>物件詳細資料</title>
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f7f7f7;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 800px;
+      margin: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #fa782a;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    ul li {
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 6px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #337ab7;
+      text-decoration: none;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    .img-preview {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: #fa782a;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .btn:hover {
+      background-color: #d8661f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>物件詳細資料</h1>
+    <a href="{{ url_for('admin_featured') }}" class="back-link">« 返回列表</a>
+
+    <div>
+      <img src="{{ item.image_url or url_for('static', filename='images/no-image.png') }}" alt="物件圖片" class="img-preview">
+    </div>
+
+    <ul>
+      <li><strong>房屋標題：</strong>{{ item.房屋標題 or item.地址 }}</li>
+      <li><strong>地址：</strong>{{ item.區域 }}</li>
+      <li><strong>總價：</strong>{{ item.委託總價 if item.委託總價 is number }} 萬</li>
+      <li><strong>房型：</strong>{{ item.房型 or '-' }}</li>
+      <li><strong>房廳衛：</strong>{{ item.房廳衛 or '-' }}</li>
+      <li><strong>屋齡：</strong>{{ item.屋齡 or '-' }} 年</li>
+      <li><strong>登記坪數：</strong>{{ item.登記坪數 or '-' }} 坪</li>
+      <li><strong>區域：</strong>{{ item.區域 or '-' }}</li>
+      <li><strong>強銷狀態：</strong>{{ item.強銷 }}</li>
+      {% if item["地圖連結"] %}
+        <li><a href="{{ item['地圖連結'] }}" class="btn" target="_blank">查看地圖</a></li>
+      {% endif %}
+      {% if item["網址"] %}
+        <li><a href="{{ item['網址'] }}" class="btn" target="_blank">前往物件網站</a></li>
+      {% endif %}
+    </ul>
+  </div>
+</body>
+</html>

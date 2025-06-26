@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}後台影片管理{% endblock %}
+
+{% block content %}
+<h1>後台主控台</h1>
+
+<ul>
+  <li><a href="{{ url_for('add_video') }}">影片管理</a></li>
+  <li><a href="{{ url_for('blog.admin_blog') }}">文章管理</a></li>
+</ul>
+
+<hr>
+
+<h2>新增影片</h2>
+<form method="post">
+  <label>地區：</label>
+  <select name="region">
+    {% for district in taichung_districts %}
+      <option value="{{ district }}">{{ district }}</option>
+    {% endfor %}
+  </select><br><br>
+  <label>Instagram 連結：</label>
+  <input type="text" name="url"><br><br>
+  <button type="submit">新增</button>
+</form>
+
+<hr>
+
+<h2>影片列表</h2>
+{% if videos %}
+  {% for region, urls in videos.items() %}
+    <h3>{{ region }}</h3>
+    <div class="carousel-container">
+      <button class="carousel-btn left-btn" aria-label="向左滑動">&lt;</button>
+      <div class="carousel-track">
+        {% for url in urls %}
+          <div class="video-box">
+            <form action="{{ url_for('delete_video') }}" method="post" class="delete-form" onsubmit="return confirm('確定刪除這支影片嗎？');">
+              <input type="hidden" name="region" value="{{ region }}">
+              <input type="hidden" name="url" value="{{ url }}">
+              <button type="submit" class="delete-btn" title="刪除影片">×</button>
+            </form>
+            <iframe src="https://www.instagram.com/p/{{ url.split('/')[-2] }}/embed"
+                    frameborder="0" scrolling="no" allowtransparency="true" class="insta-embed"></iframe>
+          </div>
+        {% endfor %}
+      </div>
+      <button class="carousel-btn right-btn" aria-label="向右滑動">&gt;</button>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>目前沒有影片資料。</p>
+{% endif %}
+
+<style>
+  /* 保留原有影片管理 CSS */
+  .btn-add-video {
+    display: inline-block;
+    margin-bottom: 20px;
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .btn-add-video:hover {
+    background-color: #0056b3;
+  }
+  .carousel-container {
+    position: relative;
+    max-width: 1100px;
+    margin-bottom: 30px;
+  }
+  .carousel-track {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .carousel-track::-webkit-scrollbar {
+    display: none;
+  }
+  .video-box {
+    position: relative;
+    flex: 0 0 calc((100% - 50px) / 6);
+    max-width: calc((100% - 50px) / 6);
+    height: 180px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f9f9f9;
+  }
+  .insta-embed {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .delete-form {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10;
+  }
+  .delete-btn {
+    background: red;
+    border: none;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .delete-btn:hover {
+    background: darkred;
+  }
+  .carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    font-size: 24px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 50%;
+    user-select: none;
+    z-index: 20;
+  }
+  .left-btn { left: -30px; }
+  .right-btn { right: -30px; }
+</style>
+
+<script>
+document.querySelectorAll('.carousel-container').forEach(container => {
+  const track = container.querySelector('.carousel-track');
+  const leftBtn = container.querySelector('.left-btn');
+  const rightBtn = container.querySelector('.right-btn');
+  const scrollAmount = track.querySelector('.video-box').offsetWidth + 10;
+  leftBtn.addEventListener('click', () => {
+    track.scrollBy({ left: -scrollAmount * 2, behavior: 'smooth' });
+  });
+  rightBtn.addEventListener('click', () => {
+    track.scrollBy({ left: scrollAmount * 2, behavior: 'smooth' });
+  });
+});
+</script>
+{% endblock %}

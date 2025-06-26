@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}房產知識｜Ellen 帶你找家{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">房產新聞洞察</h1>
+<p>來自中時地產的最新 5 則新聞</p>
+
+<ul class="list-group">
+  {% for news in news_items %}
+    <li class="list-group-item mb-2">
+      <a href="{{ news.link }}" target="_blank">{{ news.title }}</a><br>
+      <small class="text-muted">{{ news.pub_date }}</small>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

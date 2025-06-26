@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Excel檔案管理{% endblock %}
+{% block content %}
+<h1>Excel檔案管理</h1>
+
+<!-- 上傳表單 -->
+<form method="POST" enctype="multipart/form-data" class="mb-4">
+  <div class="mb-3">
+    <label for="file" class="form-label">上傳新的 Excel 檔案 (.xlsx)</label>
+    <input type="file" name="file" id="file" accept=".xlsx" class="form-control" required>
+  </div>
+  <button type="submit" name="upload" class="btn btn-success">上傳</button>
+</form>
+
+<!-- 檔案清單 -->
+<h5>目前已有檔案：</h5>
+<ul class="list-group">
+  {% for f in excel_files %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    {{ f }}
+    <form method="POST" class="m-0">
+      <input type="hidden" name="filename" value="{{ f }}">
+      <button type="submit" name="delete" class="btn btn-danger btn-sm" onclick="return confirm('確定要刪除 {{ f }} 嗎？')">刪除</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="list-group-item">目前沒有檔案</li>
+  {% endfor %}
+</ul>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="alert alert-info mt-3">
+      {% for message in messages %}
+        <div>{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+{% endblock %}

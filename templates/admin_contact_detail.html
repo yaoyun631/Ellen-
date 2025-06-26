@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}留言詳細內容{% endblock %}
+{% block content %}
+<h2>留言詳細內容</h2>
+
+<a href="{{ url_for('admin_contacts', page=page) }}" class="btn btn-secondary mb-3">返回預約訊息列表</a>
+
+<table class="table table-bordered">
+  <tr><th>姓名</th><td>{{ contact.name }}</td></tr>
+  <tr><th>電話</th><td>{{ contact.phone }}</td></tr>
+  <tr><th>留言內容</th><td>{{ contact.message }}</td></tr>
+  <tr><th>時間</th><td>{{ contact.time }}</td></tr>
+  <tr><th>狀態</th><td>{{ '待聯繫' if contact.status == 'pending' else '已聯繫' }}</td></tr>
+</table>
+
+{% endblock %}

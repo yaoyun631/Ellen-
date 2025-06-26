@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}部落格文章列表{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 1200px;">
+  <div class="row">
+    <!-- 側邊分類選單 -->
+    <div class="col-md-3">
+      <h5 class="mb-3">分類資料夾</h5>
+      <ul class="list-group">
+        {% for folder in folders %}
+          <a href="{{ url_for('blog.index', folder=folder) }}"
+             class="list-group-item list-group-item-action {% if current_folder == folder %}active{% endif %}">
+            {{ folder }}
+          </a>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- 主要文章區塊 -->
+    <div class="col-md-9">
+      <h3 class="mb-4">{{ current_folder or '所有文章' }}</h3>
+      {% if posts %}
+        <div class="list-group">
+          {% for post in posts %}
+            <div class="list-group-item list-group-item-action mb-3">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">
+                  <a href="{{ url_for('blog.show_post', post_id=post.id) }}" class="text-dark text-decoration-none">
+                    {{ post.title }}
+                  </a>
+                </h5>
+                <small class="text-muted">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+              </div>
+              <div class="mb-2">{{ post.content|striptags|truncate(150, True, '...') }}</div>
+              {% if post.image %}
+                <img src="{{ url_for('static', filename='uploads/' ~ post.image) }}" class="img-thumbnail mb-2" style="max-height: 150px;">
+              {% endif %}
+              <a href="{{ url_for('blog.show_post', post_id=post.id) }}" class="btn btn-outline-primary btn-sm">閱讀全文</a>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>目前沒有文章。</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

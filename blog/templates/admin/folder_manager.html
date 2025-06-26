@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}分類管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 600px;">
+  <h2>分類資料夾管理</h2>
+  <a href="{{ url_for('blog.admin_blog') }}" class="btn btn-outline-secondary mb-3">返回文章管理</a>
+
+  <form method="POST" action="{{ url_for('blog.add_folder') }}" class="mb-3">
+    <div class="input-group">
+      <input type="text" name="folder" class="form-control" placeholder="輸入分類名稱" required>
+      <div class="input-group-append">
+        <button class="btn btn-success" type="submit">新增分類</button>
+      </div>
+    </div>
+  </form>
+
+  <ul class="list-group">
+    {% for folder in folders %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          {{ loop.index }}. {{ folder }}
+        </div>
+        <div class="btn-group btn-group-sm">
+          {% if not loop.first %}
+            <form method="POST" action="{{ url_for('blog.move_folder_up', folder_name=folder) }}">
+              <button type="submit" class="btn btn-outline-secondary">↑</button>
+            </form>
+          {% endif %}
+          {% if not loop.last %}
+            <form method="POST" action="{{ url_for('blog.move_folder_down', folder_name=folder) }}">
+              <button type="submit" class="btn btn-outline-secondary">↓</button>
+            </form>
+          {% endif %}
+          <form method="POST" action="{{ url_for('blog.delete_folder', folder_name=folder) }}" onsubmit="return confirm('確定要刪除分類「{{ folder }}」嗎？');">
+            <button type="submit" class="btn btn-danger">刪除</button>
+          </form>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

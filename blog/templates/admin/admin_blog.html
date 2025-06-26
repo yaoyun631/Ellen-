@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}文章管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 1000px;">
+<div class="container mt-4">
+  <h2>文章管理</h2>
+  <a href="{{ url_for('blog.new_post') }}" class="btn btn-success mb-3">新增文章</a>
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary mb-3">返回後台總管理</a>
+  <a href="{{ url_for('blog.folder_manager') }}" class="btn btn-outline-info mb-3">管理分類資料夾</a>
+
+  <h2 class="mb-4">文章列表</h2>
+  {% if posts %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>標題</th>
+          <th>分類</th>
+          <th>時間</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for post in posts %}
+          <tr>
+            <td>{{ post.title }}</td>
+            <td>{{ post.folder or '未分類' }}</td>
+            <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              <a href="{{ url_for('blog.edit_post', post_id=post.id) }}" class="btn btn-sm btn-primary">編輯</a>
+              <form method="post" action="{{ url_for('blog.delete_post', post_id=post.id) }}" style="display:inline-block;" onsubmit="return confirm('確定要刪除這篇文章嗎？');">
+                <button type="submit" class="btn btn-sm btn-danger">刪除</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>目前沒有文章。</p>
+  {% endif %}
+</div>
+{% endblock %}

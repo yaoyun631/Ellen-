@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}看屋影片｜Ellen 帶你找家{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">看屋影片</h1>
+<p>一起看房去！這裡收錄 Ellen 拍攝的實地介紹影片與房產小知識。</p>
+
+<style>
+  .video-carousel {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    padding: 10px 40px;
+    box-sizing: border-box;
+    margin-bottom: 40px;
+  }
+
+  .carousel-track {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .carousel-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    font-size: 24px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 50%;
+    user-select: none;
+    z-index: 10;
+  }
+
+  .left-btn {
+    left: 5px;
+  }
+
+  .right-btn {
+    right: 5px;
+  }
+
+  blockquote.instagram-media {
+    flex: 0 0 300px !important;
+    max-width: 300px !important;
+    min-width: 300px !important;
+    margin: 0 !important;
+  }
+
+  @media (max-width: 768px) {
+    blockquote.instagram-media {
+      flex: 0 0 90vw !important;
+      max-width: 90vw !important;
+      min-width: 90vw !important;
+    }
+  }
+</style>
+
+{% for region, links in videos.items() %}
+  <h2>{{ region }}</h2>
+  {% if links %}
+    <div class="video-carousel">
+      <button class="carousel-btn left-btn" aria-label="向左滑動">&lt;</button>
+      <div class="carousel-track">
+        {% for link in links %}
+          <blockquote class="instagram-media" data-instgrm-permalink="{{ link }}" data-instgrm-version="14"></blockquote>
+        {% endfor %}
+      </div>
+      <button class="carousel-btn right-btn" aria-label="向右滑動">&gt;</button>
+    </div>
+  {% else %}
+    <p>目前還沒有影片。</p>
+  {% endif %}
+{% endfor %}
+
+<script async src="//www.instagram.com/embed.js"></script>
+<script>
+  document.querySelectorAll('.video-carousel').forEach(carousel => {
+    const track = carousel.querySelector('.carousel-track');
+    const leftBtn = carousel.querySelector('.left-btn');
+    const rightBtn = carousel.querySelector('.right-btn');
+
+    const scrollAmount = 310; // 每格寬 300 + gap 10px
+
+    leftBtn.addEventListener('click', () => {
+      track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+
+    rightBtn.addEventListener('click', () => {
+      track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+  });
+</script>
+{% endblock %}
+
