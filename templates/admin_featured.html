@@ -82,7 +82,7 @@
         <div class="featured-toggle {% if item.強銷 == '是' %}active{% endif %}" 
              onclick="toggleFeatured(event, '{{ item.id }}')" title="切換強銷">♥</div>
         <div class="info">
-          <div class="address" title="{{ item.地址 }}">{{ item.房屋標題 or item.地址 }}</div>
+          <div class="address" title="{{ item.區域 }}">{{ item.房屋標題 or item.區域 }}</div>
           <div class="meta">
             {{ item.區域 or '-' }} | {{ item.房型 or '-' }} | {{ item.房廳衛 or '-' }}
           </div>

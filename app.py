@@ -11,6 +11,8 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from werkzeug.utils import secure_filename
+from supabase import create_client, Client
+from flask import Flask, render_template, request
 
 
 app = Flask(__name__)
