@@ -11,10 +11,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from werkzeug.utils import secure_filename
-import threading
-import schedule
-import time
-import requests
+
 
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
@@ -23,22 +20,6 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'data')
 ALLOWED_EXTENSIONS = {'xlsx'}
 SLIDE_FOLDER = os.path.join(app.static_folder, 'images', 'carousel')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
-url = "https://ellendai-ni-zhao-jia.onrender.com"
-
-def wake_up():
-    try:
-        requests.get("https://ellendai-ni-zhao-jia.onrender.com")
-        print("網站喚醒成功")
-    except Exception as e:
-        print("喚醒失敗:", e)
-
-def run_scheduler():
-    schedule.every(14).minutes.do(wake_up)
-    wake_up()
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
 
 # 部落格
 posts = []
@@ -319,7 +300,6 @@ def index():
     # 強銷物件篩選與整理
     df_raw["強銷"] = df_raw.get("強銷", "否").fillna("否")
     featured_df = df_raw[df_raw["強銷"] == "是"]
-    featured_df["房廳衛"] = featured_df["房/廳/衛"].apply(format_layout)
     featured_data = featured_df.head(8).fillna("-").to_dict(orient="records")
 
     df = df_raw.copy()
@@ -831,9 +811,5 @@ def admin_featured_detail(item_id):
     return render_template("admin_featured_detail.html", item=item)
 
 
-
 if __name__ == "__main__":
-    import threading
-    t = threading.Thread(target=run_scheduler, daemon=True)
-    t.start()
-
+    app.run(debug=True)
