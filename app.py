@@ -11,7 +11,10 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from werkzeug.utils import secure_filename
-
+import threading
+import schedule
+import time
+import requests
 
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
@@ -20,6 +23,22 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'data')
 ALLOWED_EXTENSIONS = {'xlsx'}
 SLIDE_FOLDER = os.path.join(app.static_folder, 'images', 'carousel')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
+url = "https://ellendai-ni-zhao-jia.onrender.com"
+
+def wake_up():
+    try:
+        requests.get("https://ellendai-ni-zhao-jia.onrender.com")
+        print("網站喚醒成功")
+    except Exception as e:
+        print("喚醒失敗:", e)
+
+def run_scheduler():
+    schedule.every(14).minutes.do(wake_up)
+    wake_up()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
 
 # 部落格
 posts = []
@@ -812,7 +831,9 @@ def admin_featured_detail(item_id):
     return render_template("admin_featured_detail.html", item=item)
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
 
-app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == "__main__":
+    import threading
+    t = threading.Thread(target=run_scheduler, daemon=True)
+    t.start()
+
