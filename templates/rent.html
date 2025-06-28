@@ -5,8 +5,15 @@
 <div class="container mt-4">
 
   <!-- 查詢表單 -->
-  <div class="p-4 mb-5" style="background-color: #CABAA1; border-radius: 8px;">
-    <h2 class="mb-4">🏠 租屋查詢</h2>
+<div class="p-4 mb-5" style="background-color: #CABAA1; border: 1px solid #eee; border-radius: 8px;">
+  <h2 class="mb-4 d-flex align-items-center justify-content-between">
+  <span>🏠台中租屋</span>
+  <span>
+    <a href="{{ url_for('index') }}" class="btn btn-sm btn-primary me-2">找好房</a>
+    <a href="{{ url_for('rent') }}" class="btn btn-sm btn-success">租好屋</a>
+  </span>
+</h2>
+
     <form method="GET" id="rentSearchForm">
       <div class="row g-3">
 

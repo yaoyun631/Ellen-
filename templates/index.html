@@ -113,7 +113,14 @@
 
 <!-- 查詢表單 -->
 <div class="p-4 mb-5" style="background-color: #CABAA1; border: 1px solid #eee; border-radius: 8px;">
-  <h2 class="mb-4">🏠 物件查詢</h2>
+  <h2 class="mb-4 d-flex align-items-center justify-content-between">
+  <span>🏠物件查詢</span>
+  <span>
+    <a href="{{ url_for('index') }}" class="btn btn-sm btn-primary me-2" >找好房</a>
+    <a href="{{ url_for('rent') }}" class="btn btn-sm btn-success" >租好屋</a>
+  </span>
+</h2>
+
   <form method="GET" id="searchForm">
     <div class="row g-3">
       <!-- 區域勾選 -->
@@ -199,12 +206,7 @@
 
 <p>符合條件資料筆數：{{ total_records }}</p>
 
-<!-- 右上角顯示模式切換 -->
-<div style="position: fixed; top: 90px; right: 20px; z-index: 1000;">
-  <button id="toggleViewBtn" class="btn btn-outline-dark btn-lg" title="切換顯示模式" style="font-size: 1.5rem; font-weight: bold;">
-    #
-  </button>
-</div>
+
 
 
 
@@ -233,7 +235,7 @@
 
 
 <!-- 方格顯示區 -->
-<div id="gridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4" style="display:none;">
+<div id="gridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
   {% for row in data %}
   <div class="col">
     <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
@@ -241,9 +243,8 @@
         <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}" class="card-img-top" alt="圖片" style="object-fit: cover; height: 180px;">
         <div class="card-body d-flex flex-column">
           <h3 style="font-family: 微軟正黑體 Light; font-weight: bold; font-size: 1.25rem; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ row['房屋標題'] or row['地址'] }}">
-  {{ row['房屋標題'] or row['地址'] }}
-</h3>
-
+            {{ row['房屋標題'] or row['地址'] }}
+          </h3>
           <div class="caption" style="font-weight: 500; color: #555; margin-bottom: 0.5rem;">
             {{ row.區域 or '-' }} | {{ row.房型 or '-' }}
           </div>
@@ -279,62 +280,6 @@
   {% endfor %}
 </div>
 
-<!-- 表格顯示區 -->
-<div id="cardListView">
-  {% for row in data %}
-  <div class="card-horizontal p-3 border-top border-bottom bg-white"
-       style="display: flex; margin: 0; border-left: none; border-right: none; border-radius: 0; cursor: pointer;"
-       onclick="window.open('{{ row.網址 or '#' }}', '_blank')">
-
-    <!-- 圖片 -->
-    <div style="flex-shrink: 0;">
-      <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}"
-           alt="圖片"
-           style="width: 200px; height: 150px; object-fit: cover; border-radius: 4px;">
-    </div>
-
-    <!-- 資訊區塊 -->
-    <div style="flex-grow: 1; padding-left: 12px;">
-      <!-- 標題 -->
-      <h5 class="mb-1"
-          style="font-size: 1.5rem; font-weight: bold;">
-        {{ row['房屋標題'] or row['地址'] }}
-      </h5>
-
-      <div style="color: #444; font-size: 1rem;">
-        <span style="margin-right: 8px;">{{ row['房型'] or '-' }}</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">{{ row['房廳衛'] or '-' }}</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">登記坪數 {{ row['登記坪數'] or '-' }}坪</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">主建 {{ row['主建物坪'] or '-' }}坪</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">屋齡 {{ row['屋齡'] or '-' }}年</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">樓層 {{ row['樓別/樓高'] or '-' }}</span><span style="margin-right: 16px;">|</span>
-        <span style="margin-right: 8px;">{{ row['車位型式'] or '-' }}</span>
-      </div>
-
-      <div style="font-size: 1.1rem; color: gray;">
-        {{ row['區域'] or '-' }} - {{ row['地址'] or '' }}
-      </div>
-    </div>
-
-    <!-- 價格區 -->
-    <div style="flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 100px;">
-      <div style="font-size: 1.6rem; font-weight: bold; color: red;">
-        {% if row.委託總價 is number %}
-          {{ row.委託總價|int }} 萬
-        {% else %}
-          -
-        {% endif %}
-      </div>
-      <div style="font-size: 0.85rem; color: #888;">
-        {% if row['單價'] is number %}
-          {{ row['單價']|round(2) }} 萬/坪
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
 
 
 <!-- 分頁按鈕 -->
@@ -352,48 +297,6 @@
       cb.checked = source.checked;
     });
   }
-
-
-    // 切換顯示模式
-  const toggleBtn = document.getElementById('toggleViewBtn');
-  const cardListView = document.getElementById('cardListView');
-  const gridView = document.getElementById('gridView');
-
-  // 初始顯示模式，可用 localStorage 紀錄
-  let isTableView = localStorage.getItem('isTableView');
-  if (isTableView === null) {
-    isTableView = true; // 預設表格顯示
-  } else {
-    isTableView = (isTableView === 'true');
-  }
-  updateView();
-
-  toggleBtn.addEventListener('click', () => {
-    isTableView = !isTableView;
-    localStorage.setItem('isTableView', isTableView);
-    updateView();
-  });
-function updateView() {
-  const toggleBtn = document.getElementById("toggleViewBtn");
-
-  if (isTableView) {
-    cardListView.style.display = 'block';
-    gridView.style.display = 'none';
-    toggleBtn.textContent = "卡片";
-
-    // 字體變小（針對 cardListView）
-    cardListView.style.fontSize = '0.5rem';
-  } else {
-    cardListView.style.display = 'none';
-    gridView.style.display = 'flex';
-    toggleBtn.textContent = "列表";
-
-    // 字體變小（針對 gridView）
-    gridView.style.fontSize = '0.5rem';
-  }
-}
-ㄒ
-
 
 
   // 分頁跳轉（改成直接跳網址，避免 method not allowed）
