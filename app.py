@@ -11,15 +11,25 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from werkzeug.utils import secure_filename
-
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'data')
-ALLOWED_EXTENSIONS = {'xlsx'}
+ALLOWED_EXTENSIONS_EXCEL = {'xls', 'xlsx'}
 SLIDE_FOLDER = os.path.join(app.static_folder, 'images', 'carousel')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+app.config['RENT_UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'data', 'rent')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+#頂尖物件 Excel 檔案所在資料夾
+RENT_DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'rent')
+
+
+
 
 # 部落格
 posts = []
@@ -35,6 +45,35 @@ CONTACT_FILE = 'contacts.json'
 # 建立資料夾
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
+
+
+
+#租屋def
+def get_latest_excel_file(directory):
+    files = [f for f in os.listdir(directory) if f.lower().endswith(('.xls', '.xlsx'))]
+    if not files:
+        return None
+    files = sorted(files, key=lambda x: os.path.getmtime(os.path.join(directory, x)), reverse=True)
+    return os.path.join(directory, files[0])
+
+def parse_excel(file_path):
+    df = pd.read_excel(file_path)
+    data = []
+    for _, row in df.iterrows():
+        item = {
+            'title': row.get('地址', ''),
+            'district': row.get('縣市/區域', ''),
+            'edm_link': row.get('EDM連結', '#'),
+            '類型': row.get('房屋類型', ''),
+            '格局': row.get('格局', ''),
+            '租金': row.get('租金', '價格洽詢'),
+            'image_url': '/static/images/default_house.png' , # 預設圖片
+            '型式': row.get('房屋型式', ''),       # 🆕 加入房屋型式
+            '是否可寵物': row.get('是否可寵物', ''),     # 🆕 加入是否可寵物
+            '設備': row.get('設備', '')
+        }
+        data.append(item)
+    return data
 
 def format_layout(s):
     if not isinstance(s, str) or s.strip() == "":
@@ -206,11 +245,11 @@ def save_df_to_excel(df, filename):
     df.to_excel(os.path.join(DATA_DIR, filename), index=False)
 
 taichung_districts = [
-    "中區", "東區", "南區", "西區", "北區", "西屯區", "南屯區", "北屯區",
-    "豐原區", "石岡區", "東勢區", "和平區", "新社區", "潭子區", "大雅區",
-    "神岡區", "大肚區", "沙鹿區", "龍井區", "梧棲區", "清水區", "大甲區",
-    "外埔區", "大安區"
+  "中區", "東區", "南區", "西區", "北區", "北屯區", "西屯區", "南屯區", "太平區", "大里區", "霧峰區", "烏日區",
+  "豐原區", "后里區", "石岡區", "東勢區", "和平區", "新社區", "潭子區", "大雅區", "神岡區",
+  "大肚區", "沙鹿區", "龍井區", "梧棲區", "清水區", "大甲區", "外埔區", "大安區"
 ]
+
 
 def extract_area(addr):
     if not isinstance(addr, str):
@@ -417,9 +456,112 @@ def index():
 def insights():
     return render_template("insights.html")
 
-@app.route("/report")
-def report():
-    return render_template("report.html")
+
+
+
+@app.route('/rent')
+def rent():
+    # 取得篩選參數
+    selected_areas = request.args.getlist('areas')
+    selected_styles = request.args.getlist('styles')
+    selected_house_types = request.args.getlist('house_types')
+    selected_pets = request.args.getlist('pets')
+    keyword = request.args.get('keyword', '').strip()
+    room_min = request.args.get('room_min')
+    room_max = request.args.get('room_max')
+    price_min = request.args.get('price_min')
+    price_max = request.args.get('price_max')
+    sort_by = request.args.get('sort_by', '')
+
+    # 數字轉換（空值或非數字用預設）
+    def to_int(val, default):
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    room_min = to_int(room_min, 0)
+    room_max = to_int(room_max, 99)
+    price_min = to_int(price_min, 0)
+    price_max = to_int(price_max, 9999999)
+
+    excel_file = get_latest_excel_file(RENT_DATA_DIR)
+    data = []
+    taichung_districts = []
+
+    if excel_file:
+        df = pd.read_excel(excel_file)
+        df.fillna('', inplace=True)
+
+        # 確保數字欄位型態，租金為數字
+        df['租金'] = pd.to_numeric(df['租金'], errors='coerce').fillna(0)
+
+        # 解析格局房數 (ex: "3房2廳" 取3)
+        df['房數'] = df['格局'].str.extract(r'(\d+)房')[0].fillna(0).astype(float)
+
+        # 取得台中區域列表
+        taichung_districts = sorted(df['縣市/區域'].unique().tolist())
+
+        # 篩選條件
+        if selected_areas:
+            df = df[df['縣市/區域'].isin(selected_areas)]
+        if selected_styles:
+            df = df[df['房屋型式'].isin(selected_styles)]
+        if selected_house_types:
+            df = df[df['房屋類型'].isin(selected_house_types)]
+        if selected_pets:
+            df = df[df['是否可寵物'].isin(selected_pets)]
+        if keyword:
+            df = df[df['地址'].str.contains(keyword, na=False) | df['備註'].str.contains(keyword, na=False)]
+
+        df = df[(df['房數'] >= room_min) & (df['房數'] <= room_max)]
+        df = df[(df['租金'] >= price_min) & (df['租金'] <= price_max)]
+
+        # 排序
+        if sort_by == 'price_asc':
+            df = df.sort_values(by='租金', ascending=True)
+        elif sort_by == 'price_desc':
+            df = df.sort_values(by='租金', ascending=False)
+        elif sort_by == 'room_asc':
+            df = df.sort_values(by='房數', ascending=True)
+        elif sort_by == 'room_desc':
+            df = df.sort_values(by='房數', ascending=False)
+        else:
+            df = df.sort_values(by='物件編號', ascending=False)
+
+        for _, row in df.iterrows():
+            address = row.get('地址', '')
+            masked_address = re.sub(r'(\d+)[號|号]?', '', address)  # 只保留地址大街部分
+
+            data.append({
+                'title': masked_address,
+                'district': row.get('縣市/區域', ''),
+                'edm_link': row.get('EDM連結', '#'),
+                '類型': row.get('房屋類型', ''),
+                '格局': row.get('格局', ''),
+                '租金': row.get('租金', '價格洽詢'),
+                '型式': row.get('房屋型式', ''),
+                '是否可寵物': row.get('是否可寵物', ''),
+                '設備': row.get('設備', '')
+            })
+
+    return render_template('rent.html',
+                           data=data,
+                           total_records=len(data),
+                           sort_by=sort_by,
+                           keyword=keyword,
+                           selected_areas=selected_areas,
+                           selected_styles=selected_styles,
+                           selected_house_types=selected_house_types,
+                           selected_pets=selected_pets,
+                           room_min='' if room_min == 0 else room_min,
+                           room_max='' if room_max == 99 else room_max,
+                           price_min='' if price_min == 0 else price_min,
+                           price_max='' if price_max == 9999999 else price_max,
+                           taichung_districts=taichung_districts
+                           )
+
+
 
 @app.route("/videos")
 def videos():
@@ -811,5 +953,54 @@ def admin_featured_detail(item_id):
     return render_template("admin_featured_detail.html", item=item)
 
 
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS_EXCEL
+
+@app.route('/admin/rent_upload', methods=['GET', 'POST'])
+def admin_rent_upload():
+    if request.method == 'POST':
+        if 'excel_file' not in request.files:
+            flash('沒有上傳檔案', 'danger')
+            return redirect(request.url)
+        file = request.files['excel_file']
+        if file.filename == '':
+            flash('請選擇檔案', 'warning')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = os.path.basename(file.filename).replace('/', '_').replace('\\', '_')
+            save_path = os.path.join(app.config['RENT_UPLOAD_FOLDER'], filename)
+            file.save(save_path)
+            flash(f'檔案「{filename}」上傳成功！', 'success')
+            return redirect(url_for('admin_rent_upload'))
+        else:
+            flash('請上傳 xls 或 xlsx 格式的檔案', 'danger')
+            return redirect(request.url)
+
+    files = [f for f in os.listdir(app.config['RENT_UPLOAD_FOLDER']) if allowed_file(f)]
+    return render_template('admin_rent_upload.html', files=files)
+
+@app.route('/admin/rent_delete/<filename>', methods=['POST'])
+def admin_rent_delete(filename):
+    if not allowed_file(filename):
+        flash('檔案格式不允許刪除', 'danger')
+        return redirect(url_for('admin_rent_upload'))
+
+    file_path = os.path.join(app.config['RENT_UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        flash(f'檔案「{filename}」已刪除', 'success')
+    else:
+        flash('檔案不存在', 'warning')
+
+    return redirect(url_for('admin_rent_upload'))
+
+
+
+
+
 if __name__ == "__main__":
     app.run(debug=True)
+
+app.run(host="0.0.0.0", port=5000, debug=True)
+

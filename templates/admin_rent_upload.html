@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}租屋 Excel 管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>租屋 Excel 檔案管理</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" enctype="multipart/form-data" class="mb-4">
+    <div class="mb-3">
+      <label for="excelFile" class="form-label">選擇 Excel 檔案 (.xls, .xlsx)</label>
+      <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xls,.xlsx" required>
+    </div>
+    <button type="submit" class="btn btn-primary">上傳 Excel</button>
+  </form>
+
+  <h4>目前已上傳的檔案</h4>
+  {% if files %}
+    <ul class="list-group">
+      {% for file in files %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ file }}
+          <form method="post" action="{{ url_for('admin_rent_delete', filename=file) }}" onsubmit="return confirm('確定要刪除 {{ file }} 嗎？');">
+            <button type="submit" class="btn btn-danger btn-sm">刪除</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>尚未上傳任何檔案。</p>
+  {% endif %}
+</div>
+{% endblock %}

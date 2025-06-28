@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Ellen租屋專區{% endblock %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <!-- 查詢表單 -->
+  <div class="p-4 mb-5" style="background-color: #CABAA1; border-radius: 8px;">
+    <h2 class="mb-4">🏠 租屋查詢</h2>
+    <form method="GET" id="rentSearchForm">
+      <div class="row g-3">
+
+        <!-- 區域 -->
+        <div class="col-12">
+          <label class="form-label">區域</label><br />
+          <label class="me-3"><input type="checkbox" id="area_all" onchange="toggleAll(this)"> 全部</label>
+          {% for d in taichung_districts %}
+          <label class="me-3">
+            <input type="checkbox" name="areas" value="{{ d }}" {% if d in selected_areas %}checked{% endif %}> {{ d.replace('台中市', '') }}
+          </label>
+          {% endfor %}
+        </div>
+
+
+        <!-- 房屋類型 -->
+        <div class="col-12 mt-3">
+          <label class="form-label">房屋類型</label><br />
+          {% set house_types = ["透天", "別墅", "華廈", "公寓", "電梯大樓", "其他"] %}
+          {% for t in house_types %}
+          <label class="me-2">
+            <input type="checkbox" name="house_types" value="{{ t }}" {% if t in selected_house_types %}checked{% endif %}> {{ t }}
+          </label>
+          {% endfor %}
+        </div>
+
+        <!-- 寵物 -->
+        <div class="col-12 mt-3">
+          <label class="form-label">寵物友善</label><br />
+          <label class="me-3">
+            <input type="checkbox" name="pets" value="是" {% if '是' in selected_pets %}checked{% endif %}> 可寵
+          </label>
+          <label class="me-3">
+            <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可貓
+          </label>
+        </div>
+        <!-- 格局 -->
+        <div class="col-6 col-md-2">
+          <label for="room_min" class="form-label">格局最小(房)</label>
+          <input type="text" name="room_min" id="room_min" class="form-control" pattern="\d*" inputmode="numeric" value="{{ room_min }}">
+        </div>
+        <div class="col-6 col-md-2">
+          <label for="room_max" class="form-label">格局最大(房)</label>
+          <input type="text" name="room_max" id="room_max" class="form-control" pattern="\d*" inputmode="numeric" value="{{ room_max }}">
+        </div>
+
+        <!-- 租金 -->
+        <div class="col-6 col-md-2">
+          <label for="price_min" class="form-label">租金最小(元)</label>
+          <input type="text" name="price_min" id="price_min" class="form-control" pattern="\d*" inputmode="numeric" value="{{ price_min }}">
+        </div>
+        <div class="col-6 col-md-2">
+          <label for="price_max" class="form-label">租金最大(元)</label>
+          <input type="text" name="price_max" id="price_max" class="form-control" pattern="\d*" inputmode="numeric" value="{{ price_max }}">
+        </div>
+
+
+
+      <!-- 關鍵字 -->
+      <div class="col-12 col-md-6">
+        <label for="keyword" class="form-label">關鍵字（地址、描述）</label>
+        <input type="text" name="keyword" id="keyword" class="form-control" value="{{ keyword }}">
+      </div>
+
+      <!-- 排序選單放在關鍵字旁邊 -->
+      <div class="col-12 col-md-6">
+        <label for="sort_by" class="form-label fw-bold">排序方式</label>
+        <select name="sort_by" id="sort_by" class="form-select">
+          <option value="" {% if not sort_by %}selected{% endif %}>無排序</option>
+          <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>租金由小到大</option>
+          <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>租金由大到小</option>
+          <option value="room_asc" {% if sort_by == 'room_asc' %}selected{% endif %}>格局由少到多</option>
+          <option value="room_desc" {% if sort_by == 'room_desc' %}selected{% endif %}>格局由多到少</option>
+        </select>
+      </div>
+
+      <!-- 查詢按鈕 -->
+      <div class="col-12 text-center">
+        <button type="submit" class="btn mt-3" style="background-color: #fa782a; color: white;">
+          查詢
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+  <!-- 顯示符合資料筆數 -->
+  <p>符合條件資料筆數：{{ total_records }}</p>
+
+  <!-- 租屋列表 -->
+<div class="row row-cols-1 row-cols-md-3 g-4">
+  {% for row in data %}
+  <div class="col">
+    <a href="{{ row.edm_link }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
+      <div class="card h-100 shadow-sm">
+        <!-- 這裡去掉標題的 <a> -->
+        <div class="card-body">
+          <h5 class="card-title">{{ row.title }}</h5>
+          <p class="card-text text-muted">
+            區域：{{ row.district }}<br>
+            格局：{{ row.格局 }} ｜ 寵物：
+            {% if row["是否可寵物"] == "是" %}
+              可寵
+            {% elif row["是否可寵物"] == "2" %}
+              可貓
+            {% elif row["是否可寵物"] == "否" %}
+              不可
+            {% else %}
+              {{ row["是否可寵物"] or '-' }}
+            {% endif %}<br>
+            設備：{{ row.設備 or '-' }}
+          </p>
+        </div>
+        <div class="card-footer text-end">
+          <strong class="text-danger" style="font-size: 1.2rem;">
+            {{ row.租金 }}
+            {% if row.租金 != '價格洽詢' %} 元/月{% endif %}
+          </strong>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+
+
+
+</div>
+
+<script>
+  function toggleAll(source) {
+    document.querySelectorAll('input[name="areas"]').forEach(cb => cb.checked = source.checked);
+  }
+</script>
+
+{% endblock %}
