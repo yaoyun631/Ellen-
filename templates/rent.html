@@ -21,7 +21,18 @@
           {% endfor %}
         </div>
 
+        <!-- 房屋形式 -->
+        <div class="col-12 mt-3">
+          <label class="form-label">房屋形式</label><br />
+          {% set house_forms = ["整層住家", "獨立套房", "分租套房", "雅房", "店面", "商辦", "廠房", "土地"] %}
+          {% for f in house_forms %}
+          <label class="me-2">
+            <input type="checkbox" name="house_forms" value="{{ f }}" {% if f in selected_house_forms %}checked{% endif %}> {{ f }}
+          </label>
+          {% endfor %}
+        </div>
 
+        
         <!-- 房屋類型 -->
         <div class="col-12 mt-3">
           <label class="form-label">房屋類型</label><br />
@@ -32,17 +43,26 @@
           </label>
           {% endfor %}
         </div>
+          <!-- 寵物 + 陽台 -->
+          <div class="col-12 mt-3 d-flex align-items-center">
+            <!-- 寵物友善 -->
+            <div class="me-4">
+              <label class="form-label">寵物友善</label><br />
+              <label class="me-2">
+              <label>
+                <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可寵
+              </label>
+            </div>
 
-        <!-- 寵物 -->
-        <div class="col-12 mt-3">
-          <label class="form-label">寵物友善</label><br />
-          <label class="me-3">
-            <input type="checkbox" name="pets" value="是" {% if '是' in selected_pets %}checked{% endif %}> 可寵
-          </label>
-          <label class="me-3">
-            <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可貓
-          </label>
-        </div>
+            <!-- 陽台 -->
+            <div class="ms-4">
+              <label class="form-label">陽台</label><br />
+              <label>
+                <input type="checkbox" name="balcony" value="1" {% if balcony_checked %}checked{% endif %}> 有陽台
+              </label>
+            </div>
+          </div>
+
         <!-- 格局 -->
         <div class="col-6 col-md-2">
           <label for="room_min" class="form-label">格局最小(房)</label>
@@ -103,21 +123,28 @@
   <div class="col">
     <a href="{{ row.edm_link }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
       <div class="card h-100 shadow-sm">
+      <!-- ✅ 新增圖片顯示區塊 -->
+        {% set first_image = (row["圖片連結"].split(',')[0].strip()) if row["圖片連結"] else '' %}
+
+        {% if first_image.startswith('http') %}
+          <img src="{{ first_image }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+        {% else %}
+          <div class="d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+            <span class="text-muted">圖片新增中</span>
+          </div>
+        {% endif %}
+
+
+
+
+
         <!-- 這裡去掉標題的 <a> -->
         <div class="card-body">
           <h5 class="card-title">{{ row.title }}</h5>
           <p class="card-text text-muted">
             區域：{{ row.district }}<br>
-            格局：{{ row.格局 }} ｜ 寵物：
-            {% if row["是否可寵物"] == "是" %}
-              可寵
-            {% elif row["是否可寵物"] == "2" %}
-              可貓
-            {% elif row["是否可寵物"] == "否" %}
-              不可
-            {% else %}
-              {{ row["是否可寵物"] or '-' }}
-            {% endif %}<br>
+            格局：{{ row.格局 }} ｜ 寵物：{{ row["是否可寵物"] or '-' }}<br>
+            水費:{{ row.水費 }}｜電費:{{ row.電費 }}<br>
             設備：{{ row.設備 or '-' }}
           </p>
         </div>

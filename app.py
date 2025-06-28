@@ -62,7 +62,7 @@ def parse_excel(file_path):
     for _, row in df.iterrows():
         item = {
             'title': row.get('地址', ''),
-            'district': row.get('縣市/區域', ''),
+            'district': row.get('地區', ''),
             'edm_link': row.get('EDM連結', '#'),
             '類型': row.get('房屋類型', ''),
             '格局': row.get('格局', ''),
@@ -465,6 +465,7 @@ def rent():
     selected_areas = request.args.getlist('areas')
     selected_styles = request.args.getlist('styles')
     selected_house_types = request.args.getlist('house_types')
+    selected_house_forms = request.args.getlist('house_forms')
     selected_pets = request.args.getlist('pets')
     keyword = request.args.get('keyword', '').strip()
     room_min = request.args.get('room_min')
@@ -472,6 +473,11 @@ def rent():
     price_min = request.args.get('price_min')
     price_max = request.args.get('price_max')
     sort_by = request.args.get('sort_by', '')
+
+    # 新增：陽台、電費、水費條件
+    selected_has_balcony = request.args.get('has_balcony') == '1'
+    selected_has_electric = request.args.get('has_electric') == '1'
+    selected_has_water = request.args.get('has_water') == '1'
 
     # 數字轉換（空值或非數字用預設）
     def to_int(val, default):
@@ -500,17 +506,25 @@ def rent():
         df['房數'] = df['格局'].str.extract(r'(\d+)房')[0].fillna(0).astype(float)
 
         # 取得台中區域列表
-        taichung_districts = sorted(df['縣市/區域'].unique().tolist())
+        taichung_districts = sorted(df['地區'].unique().tolist())
 
         # 篩選條件
         if selected_areas:
-            df = df[df['縣市/區域'].isin(selected_areas)]
-        if selected_styles:
-            df = df[df['房屋型式'].isin(selected_styles)]
+            df = df[df['地區'].isin(selected_areas)]
+        if selected_house_forms:
+            df = df[df['房屋形式'].isin(selected_house_forms)]
         if selected_house_types:
             df = df[df['房屋類型'].isin(selected_house_types)]
         if selected_pets:
-            df = df[df['是否可寵物'].isin(selected_pets)]
+            pet_map = {"1": "是", "2": "可"}
+            filter_values = [pet_map.get(v, v) for v in selected_pets]
+            df = df[df['是否可寵物'].isin(filter_values)]
+        if selected_has_balcony:
+            df = df[df['陽台'] == '是']
+        if selected_has_electric:
+            df = df[df['電費'].astype(str).str.strip() != '']
+        if selected_has_water:
+            df = df[df['水費'].astype(str).str.strip() != '']
         if keyword:
             df = df[df['地址'].str.contains(keyword, na=False) | df['備註'].str.contains(keyword, na=False)]
 
@@ -535,14 +549,18 @@ def rent():
 
             data.append({
                 'title': masked_address,
-                'district': row.get('縣市/區域', ''),
+                'district': row.get('地區', ''),
                 'edm_link': row.get('EDM連結', '#'),
                 '類型': row.get('房屋類型', ''),
                 '格局': row.get('格局', ''),
                 '租金': row.get('租金', '價格洽詢'),
-                '型式': row.get('房屋型式', ''),
+                '型式': row.get('房屋形式', ''),
                 '是否可寵物': row.get('是否可寵物', ''),
-                '設備': row.get('設備', '')
+                '設備': row.get('設備', ''),
+                '圖片連結': row.get('圖片連結', ''),
+                '電費': row.get('電費', ''),
+                '水費': row.get('水費', ''),
+                '陽台': row.get('陽台', '')
             })
 
     return render_template('rent.html',
@@ -552,8 +570,12 @@ def rent():
                            keyword=keyword,
                            selected_areas=selected_areas,
                            selected_styles=selected_styles,
+                           selected_house_forms=selected_house_forms,
                            selected_house_types=selected_house_types,
                            selected_pets=selected_pets,
+                           selected_has_electric=selected_has_electric,
+                           selected_has_water=selected_has_water,
+                           selected_has_balcony=selected_has_balcony,
                            room_min='' if room_min == 0 else room_min,
                            room_max='' if room_max == 99 else room_max,
                            price_min='' if price_min == 0 else price_min,

@@ -33,10 +33,10 @@
             <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('index') }}" data-en="Home">找好房</a>
           </li>
           <li class="nav-item">
+            <a class="nav-link {% if request.path == '/report' %}active{% endif %}" href="{{ url_for('rent') }}" data-en="Rent"-->租好屋</a>
+          <li class="nav-item">
             <a class="nav-link {% if request.path.startswith('/blog') %}active{% endif %}" href="{{ url_for('blog.index') }}" data-en="Blog">房產知識</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.path == '/report' %}active{% endif %}" href="{{ url_for('rent') }}" data-en="Rent"-->租好屋</a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.path == '/videos' %}active{% endif %}" href="{{ url_for('videos') }}" data-en="Videos">看屋影片</a>
