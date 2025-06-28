@@ -230,6 +230,55 @@
   }
 </style>
 
+
+
+<!-- 方格顯示區 -->
+<div id="gridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4" style="display:none;">
+  {% for row in data %}
+  <div class="col">
+    <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
+      <div class="card h-100 shadow-sm">
+        <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}" class="card-img-top" alt="圖片" style="object-fit: cover; height: 180px;">
+        <div class="card-body d-flex flex-column">
+          <h3 style="font-family: 微軟正黑體 Light; font-weight: bold; font-size: 1.25rem; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ row['房屋標題'] or row['地址'] }}">
+  {{ row['房屋標題'] or row['地址'] }}
+</h3>
+
+          <div class="caption" style="font-weight: 500; color: #555; margin-bottom: 0.5rem;">
+            {{ row.區域 or '-' }} | {{ row.房型 or '-' }}
+          </div>
+          <div class="title" style="font-weight: 500; font-size: 0.9rem; color: #333; margin-bottom: 1rem;">
+            {% if row.屋齡 is number %}
+              {{ row.屋齡|int }}年
+            {% else %}
+              -
+            {% endif %} | 
+            {% if row.登記坪數 is number %}
+              {{ row.登記坪數|round(1) }}坪
+            {% else %}
+              -
+            {% endif %}
+            | {{ row.房廳衛 or '-' }}
+          </div>
+          <div class="mt-auto d-flex justify-content-end align-items-end">
+            <span style="font-weight: 700; font-size: 1.3rem;">
+              <span style="color: red; font-size: 1.6rem;">
+                {% if row.委託總價 is number %}
+                  {{ row.委託總價|int }}
+                {% else %}
+                  無資料
+                {% endif %}
+              </span>
+              <span style="color: inherit; font-size: 1.3rem; margin-left: 2px;">萬</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
 <!-- 表格顯示區 -->
 <div id="cardListView">
   {% for row in data %}
@@ -287,52 +336,6 @@
 </div>
 
 
-<!-- 方格顯示區 -->
-<div id="gridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4" style="display:none;">
-  {% for row in data %}
-  <div class="col">
-    <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
-      <div class="card h-100 shadow-sm">
-        <img src="{{ row.image_url or url_for('static', filename='images/logo.png') }}" class="card-img-top" alt="圖片" style="object-fit: cover; height: 180px;">
-        <div class="card-body d-flex flex-column">
-          <h3 style="font-family: 微軟正黑體 Light; font-weight: bold; font-size: 1.25rem; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ row['房屋標題'] or row['地址'] }}">
-  {{ row['房屋標題'] or row['地址'] }}
-</h3>
-
-          <div class="caption" style="font-weight: 500; color: #555; margin-bottom: 0.5rem;">
-            {{ row.區域 or '-' }} | {{ row.房型 or '-' }}
-          </div>
-          <div class="title" style="font-weight: 500; font-size: 0.9rem; color: #333; margin-bottom: 1rem;">
-            {% if row.屋齡 is number %}
-              {{ row.屋齡|int }}年
-            {% else %}
-              -
-            {% endif %} | 
-            {% if row.登記坪數 is number %}
-              {{ row.登記坪數|round(1) }}坪
-            {% else %}
-              -
-            {% endif %}
-            | {{ row.房廳衛 or '-' }}
-          </div>
-          <div class="mt-auto d-flex justify-content-end align-items-end">
-            <span style="font-weight: 700; font-size: 1.3rem;">
-              <span style="color: red; font-size: 1.6rem;">
-                {% if row.委託總價 is number %}
-                  {{ row.委託總價|int }}
-                {% else %}
-                  無資料
-                {% endif %}
-              </span>
-              <span style="color: inherit; font-size: 1.3rem; margin-left: 2px;">萬</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </a>
-  </div>
-  {% endfor %}
-</div>
 
 <!-- 分頁按鈕 -->
 <nav aria-label="Page navigation example" class="mt-4 d-flex justify-content-center align-items-center gap-3">
@@ -350,7 +353,8 @@
     });
   }
 
-  // 切換顯示模式
+
+    // 切換顯示模式
   const toggleBtn = document.getElementById('toggleViewBtn');
   const cardListView = document.getElementById('cardListView');
   const gridView = document.getElementById('gridView');
@@ -369,20 +373,26 @@
     localStorage.setItem('isTableView', isTableView);
     updateView();
   });
-
 function updateView() {
   const toggleBtn = document.getElementById("toggleViewBtn");
 
   if (isTableView) {
     cardListView.style.display = 'block';
     gridView.style.display = 'none';
-    toggleBtn.textContent = "#";  // 井字表示表格模式
+    toggleBtn.textContent = "卡片";
+
+    // 字體變小（針對 cardListView）
+    cardListView.style.fontSize = '0.5rem';
   } else {
     cardListView.style.display = 'none';
     gridView.style.display = 'flex';
-    toggleBtn.textContent = "≡";  // 三條線表示方格模式
+    toggleBtn.textContent = "列表";
+
+    // 字體變小（針對 gridView）
+    gridView.style.fontSize = '0.5rem';
   }
 }
+ㄒ
 
 
 
