@@ -474,10 +474,16 @@ def rent():
     price_max = request.args.get('price_max')
     sort_by = request.args.get('sort_by', '')
 
-    # 新增：陽台、電費、水費條件
+    # 新增：特色條件
     selected_has_balcony = request.args.get('has_balcony') == '1'
     selected_has_electric = request.args.get('has_electric') == '1'
     selected_has_water = request.args.get('has_water') == '1'
+    selected_has_parking = request.args.get('has_parking') == '1'
+    selected_has_water_cooler = request.args.get('has_water_cooler') == '1'
+    selected_has_wheelie_bin = request.args.get('has_wheelie_bin') == '1'
+    selected_has_sink = request.args.get('has_sink') == '1'
+    selected_has_bath_separate = request.args.get('has_bath_separate') == '1'
+    selected_has_washer_indep = request.args.get('has_washer_indep') == '1'
 
     # 數字轉換（空值或非數字用預設）
     def to_int(val, default):
@@ -516,15 +522,21 @@ def rent():
         if selected_house_types:
             df = df[df['房屋類型'].isin(selected_house_types)]
         if selected_pets:
-            pet_map = {"1": "是", "2": "可"}
-            filter_values = [pet_map.get(v, v) for v in selected_pets]
-            df = df[df['是否可寵物'].isin(filter_values)]
+            df = df[~df['是否可寵物'].isin(['不可'])]  # 排除不可
         if selected_has_balcony:
-            df = df[df['陽台'] == '是']
-        if selected_has_electric:
-            df = df[df['電費'].astype(str).str.strip() != '']
-        if selected_has_water:
-            df = df[df['水費'].astype(str).str.strip() != '']
+            df = df[df['陽台'] == '有']
+        if selected_has_parking:
+            df = df[df['車位'].str.contains('有', na=False)]
+        if selected_has_water_cooler:
+            df = df[df['飲水機'] == '有']
+        if selected_has_wheelie_bin:
+            df = df[df['子母車'] == '有']
+        if selected_has_sink:
+            df = df[df['特徵'].str.contains('流理台', na=False)]
+        if selected_has_bath_separate:
+            df = df[df['特徵'].str.contains('乾濕分離', na=False)]
+        if selected_has_washer_indep:
+            df = df[df['特徵'].str.contains('獨洗', na=False)]
         if keyword:
             df = df[df['地址'].str.contains(keyword, na=False) | df['備註'].str.contains(keyword, na=False)]
 
@@ -545,7 +557,7 @@ def rent():
 
         for _, row in df.iterrows():
             address = row.get('地址', '')
-            masked_address = re.sub(r'(\d+)[號|号]?', '', address)  # 只保留地址大街部分
+            masked_address = re.sub(r'(\d+)[號|号]?', '', address)
 
             data.append({
                 'title': masked_address,
@@ -576,6 +588,12 @@ def rent():
                            selected_has_electric=selected_has_electric,
                            selected_has_water=selected_has_water,
                            selected_has_balcony=selected_has_balcony,
+                           selected_has_parking=selected_has_parking,
+                           selected_has_water_cooler=selected_has_water_cooler,
+                           selected_has_wheelie_bin=selected_has_wheelie_bin,
+                           selected_has_sink=selected_has_sink,
+                           selected_has_bath_separate=selected_has_bath_separate,
+                           selected_has_washer_indep=selected_has_washer_indep,
                            room_min='' if room_min == 0 else room_min,
                            room_max='' if room_max == 99 else room_max,
                            price_min='' if price_min == 0 else price_min,

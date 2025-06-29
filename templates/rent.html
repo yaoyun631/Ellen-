@@ -50,25 +50,60 @@
           </label>
           {% endfor %}
         </div>
-          <!-- 寵物 + 陽台 -->
-          <div class="col-12 mt-3 d-flex align-items-center">
-            <!-- 寵物友善 -->
-            <div class="me-4">
-              <label class="form-label">寵物友善</label><br />
-              <label class="me-2">
-              <label>
-                <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可寵
-              </label>
-            </div>
-
-            <!-- 陽台 -->
-            <div class="ms-4">
-              <label class="form-label">陽台</label><br />
-              <label>
-                <input type="checkbox" name="balcony" value="1" {% if balcony_checked %}checked{% endif %}> 有陽台
-              </label>
-            </div>
-          </div>
+          <!-- 🌟 特色 -->
+<div class="col-12 mt-3">
+  <label class="form-label fw-bold">特色</label><br />
+  <div class="d-flex flex-wrap align-items-center">
+    <!-- 可寵物 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可寵物
+      </label>
+    </div>
+    <!-- 有陽台 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_balcony" value="1" {% if selected_has_balcony %}checked{% endif %}> 有陽台
+      </label>
+    </div>
+    <!-- 有車位 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_parking" value="1" {% if selected_has_parking %}checked{% endif %}> 有車位
+      </label>
+    </div>
+    <!-- 有飲水機 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_water_cooler" value="1" {% if selected_has_water_cooler %}checked{% endif %}> 有飲水機
+      </label>
+    </div>
+    <!-- 有子母車 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_wheelie_bin" value="1" {% if selected_has_wheelie_bin %}checked{% endif %}> 有子母車
+      </label>
+    </div>
+    <!-- 有流理台 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_sink" value="1" {% if selected_has_sink %}checked{% endif %}> 有流理台
+      </label>
+    </div>
+    <!-- 衛浴乾濕分離 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_bath_separate" value="1" {% if selected_has_bath_separate %}checked{% endif %}> 衛浴乾濕分離
+      </label>
+    </div>
+    <!-- 獨立洗衣機 -->
+    <div class="me-4 mb-2">
+      <label>
+        <input type="checkbox" name="has_washer_indep" value="1" {% if selected_has_washer_indep %}checked{% endif %}> 獨立洗衣機
+      </label>
+    </div>
+  </div>
+</div>
 
         <!-- 格局 -->
         <div class="col-6 col-md-2">
