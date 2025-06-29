@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>房屋資訊 EDM</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f7f3ef;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      position: relative;
+    }
+    .logo {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 120px;
+    }
+    .main-image {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 60px;
+      margin-bottom: 8px;
+      object-fit: contain;
+    }
+    .photo-count-btn {
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .region-address {
+      font-weight: 900;
+      font-size: 20px;
+      color: #000;
+      text-align: left;
+      margin-bottom: 4px;
+    }
+    .small-info {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .rent {
+      color: #d32f2f;
+      font-weight: 900;
+      font-size: 32px;
+      text-align: left;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .rent-small {
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .other-info, .fee-info, .features-info {
+      font-size: 0.95rem;
+      color: #444;
+      margin-bottom: 18px;
+      text-align: left;
+    }
+    .equipment-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: flex-start;
+      margin-bottom: 24px;
+    }
+    .equipment-item {
+      width: 14%;
+      min-width: 70px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+    .equipment-item.present {
+      color: #CABAA1;
+    }
+    .equipment-item img {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 4px;
+      filter: grayscale(100%);
+    }
+    .equipment-item.present img {
+      filter: none;
+    }
+    .btn-bottom {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 30px;
+      margin-bottom: 10px;
+    }
+    .btn-booking {
+      background-color: #a0845c;
+      color: #fff;
+      border-radius: 6px;
+      padding: 10px 24px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .btn-booking:hover {
+      background-color: #8c6b4a;
+      color: #fff;
+    }
+    .btn-line {
+      background-color: #00c300;
+      color: #fff;
+      border-radius: 6px;
+      padding: 10px 24px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .btn-line:hover {
+      background-color: #00a000;
+      color: #fff;
+    }
+    @media (max-width: 600px) {
+      .equipment-item {
+        width: 20%;
+        min-width: 50px;
+      }
+      .rent {
+        font-size: 26px;
+      }
+      .btn-booking, .btn-line {
+        font-size: 1rem;
+        padding: 10px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo -->
+    <img src="{{ url_for('static', filename='images/logo/logo.png') }}" alt="logo" class="logo" />
+
+    <!-- 房屋首圖 -->
+    {% if house_image_urls %}
+      <img src="{{ house_image_urls[0] }}" alt="房屋圖片" class="main-image" />
+      <button type="button" class="btn btn-outline-secondary photo-count-btn" data-bs-toggle="modal" data-bs-target="#carouselModal">
+        查看全部 {{ house_image_urls|length }} 張照片
+      </button>
+    {% else %}
+      <div class="text-center text-muted" style="margin-top: 60px;">尚無圖片</div>
+    {% endif %}
+
+    <!-- Modal carousel -->
+    <div class="modal fade" id="carouselModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-dark text-white">
+          <div class="modal-header border-0">
+            <h5 class="modal-title">房屋圖片瀏覽</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="關閉"></button>
+          </div>
+          <div class="modal-body p-0">
+            <div id="photoCarousel" class="carousel slide" data-bs-ride="carousel">
+              <div class="carousel-inner">
+                {% for img_url in house_image_urls %}
+                <div class="carousel-item {% if loop.first %}active{% endif %}">
+                  <img src="{{ img_url }}" class="d-block w-100" style="max-height: 100vh; object-fit: contain;" alt="圖片{{ loop.index }}" />
+                </div>
+                {% endfor %}
+              </div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#photoCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">上一張</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#photoCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">下一張</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 區域+地址 -->
+    <div class="region-address">{{ region }} {{ address }}</div>
+
+    <!-- 第二行小字 -->
+    <div class="small-info">
+      {{ house_form }} | {{ layout }} | {{ floor }}F/{{ total_floors }}F | {{ house_type }}
+    </div>
+
+    <!-- 租金 -->
+    <div class="rent">
+      {{ rent }} <span class="rent-small">元/月</span>
+    </div>
+
+    <!-- 其他資訊 -->
+    <div class="other-info">
+      房號：{{ room_number }} | 子母車：{{ parcel_box }} | 飲水機：{{ water_dispenser }} | 可寵物：{{ pets }} | 可抽菸：{{ smoking }} | 短租：{{ short_term }}
+    </div>
+
+    <!-- 水費 | 電費 | 管理費 -->   <!-- 特徵 -->
+    <div class="fee-info">
+      水費：{{ water_fee }} | 電費：{{ electricity_fee }} | 管理費：{{ management_fee }}  |   {{ features }}
+     
+
+    </div>
+
+    <!-- 設備圖示 -->
+    <div class="equipment-container">
+      {% set icon_path = url_for('static', filename='images/icon') %}
+      {% set equipments_list = [
+        '電視', '冰箱', '冷氣', '洗衣機', '熱水器',
+        '床頭櫃', '衣櫃', '沙發', '書桌', '椅子'
+      ] %}
+      {% for eq in equipments_list %}
+        {% set present = (eq in equipment) %}
+        <div class="equipment-item {% if present %}present{% endif %}">
+          <img src="{{ icon_path }}/{{ eq }}.png" alt="{{ eq }}圖示" />
+          <div>{{ eq }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+
+
+<!-- 預約與聯繫 -->
+<style>
+  .btn-icon-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+  }
+
+  .btn-icon {
+    width: 200px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-decoration: none;
+    color: #fff;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .btn-icon img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .btn-call {
+    background-color: #f39c12; /* 亮橘黃 */
+  }
+
+  .btn-call:hover {
+    background-color: #e67e22;
+  }
+
+  .btn-line {
+    background-color: #00d34f; /* 亮綠色 */
+  }
+
+  .btn-line:hover {
+    background-color: #00b442;
+  }
+
+  .btn-similar {
+    background-color: #38a1db; /* 亮藍色 */
+  }
+
+  .btn-similar:hover {
+    background-color: #2d89c7;
+  }
+
+  @media (max-width: 600px) {
+    .btn-icon {
+      width: 100%;
+    }
+  }
+</style>
+
+<!-- 📍 按鈕區塊 -->
+<div class="btn-icon-group">
+  <a href="tel:0909663034" class="btn-icon btn-call">
+    <img src="{{ url_for('static', filename='images/icon/立即預約.png') }}" alt="預約" />
+    立即預約
+  </a>
+  <a href="https://line.me/ti/p/A1CNJf_2-L" target="_blank" class="btn-icon btn-line">
+    <img src="{{ url_for('static', filename='images/icon/Line.png') }}" alt="Line" />
+    LINE 詢問
+  </a>
+  <a href="{{ similar_link }}" class="btn-icon btn-similar">
+    <img src="{{ url_for('static', filename='images/icon/猜你喜歡.png') }}" alt="猜你喜歡" />
+    猜你喜歡
+  </a>
+</div>
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

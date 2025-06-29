@@ -49,6 +49,13 @@ if not os.path.exists(DATA_DIR):
 
 
 #租屋def
+def simplify_address(address):
+    if not isinstance(address, str):
+        return ""
+    # 截到路/街/巷/弄為止
+    match = re.search(r'^(.+?[段路街巷弄])', address)
+    return match.group(1) if match else address
+
 def get_latest_excel_file(directory):
     files = [f for f in os.listdir(directory) if f.lower().endswith(('.xls', '.xlsx'))]
     if not files:
@@ -556,11 +563,10 @@ def rent():
             df = df.sort_values(by='物件編號', ascending=False)
 
         for _, row in df.iterrows():
-            address = row.get('地址', '')
-            masked_address = re.sub(r'(\d+)[號|号]?', '', address)
+            simplified_address = simplify_address(row.get("地址", ""))
 
             data.append({
-                'title': masked_address,
+                'title': simplified_address,
                 'district': row.get('地區', ''),
                 'edm_link': row.get('EDM連結', '#'),
                 '類型': row.get('房屋類型', ''),
@@ -572,7 +578,9 @@ def rent():
                 '圖片連結': row.get('圖片連結', ''),
                 '電費': row.get('電費', ''),
                 '水費': row.get('水費', ''),
-                '陽台': row.get('陽台', '')
+                '陽台': row.get('陽台', ''),
+                '物件編號': row.get('物件編號', ''),
+                
             })
 
     return render_template('rent.html',
@@ -600,6 +608,87 @@ def rent():
                            price_max='' if price_max == 9999999 else price_max,
                            taichung_districts=taichung_districts
                            )
+
+
+@app.route('/edm/<int:house_id>')
+def edm(house_id):
+    # 讀取最新 Excel
+    folder = "data/rent"
+    files = [f for f in os.listdir(folder) if f.endswith(".xlsx")]
+    if not files:
+        return "找不到 Excel 檔", 404
+    files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
+    latest_file = os.path.join(folder, files[0])
+
+    df = pd.read_excel(latest_file)
+    df.columns = df.columns.str.strip()
+    if "物件編號" not in df.columns:
+        return "欄位名稱錯誤，缺少『物件編號』", 400
+
+    house = df[df["物件編號"] == house_id]
+    if house.empty:
+        return f"找不到物件編號 {house_id}", 404
+    row = house.iloc[0]
+
+    # 地址處理
+    full_address = row.get("地址", "")
+    simplified_address = simplify_address(full_address)
+
+    # 處理圖片
+    raw_images = row.get("圖片連結", "")
+    image_list = [img.strip() for img in str(raw_images).split(',') if isinstance(img, str) and img.strip().startswith("http")]
+
+    # 相似物件參數
+    base_url = "/rent?"
+    params = []
+    if pd.notna(row.get("地區", "")):
+        params.append(f"areas={row['地區']}")
+    if pd.notna(row.get("房屋形式", "")):
+        params.append(f"house_forms={row['房屋形式']}")
+    if pd.notna(row.get("房屋類型", "")):
+        params.append(f"styles={row['房屋類型']}")
+    if isinstance(row.get("特徵", ""), str) and "可寵物" in row["特徵"]:
+        params.append("pets=可寵")
+
+    try:
+        rent_val = int(row.get("租金", 0))
+        params.append(f"price_min={max(rent_val - 500, 0)}")
+        params.append(f"price_max={rent_val + 2000}")
+    except:
+        pass
+
+    similar_link = base_url + "&".join(params)
+
+    return render_template("edm.html",
+        house_image_urls=image_list,
+        region=row.get("地區", ""),
+        address=simplified_address,
+        full_address=full_address,
+        rent=row.get("租金", ""),
+        room_number=row.get("房號", ""),
+        layout=row.get("格局", ""),
+        house_type=row.get("房屋類型", ""),
+        house_form=row.get("房屋形式", ""),
+        floor=row.get("樓層", ""),
+        total_floors=row.get("總樓層", ""),
+        elevator=row.get("是否有電梯", ""),
+        electricity_fee=row.get("電費", ""),
+        water_fee=row.get("水費", ""),
+        equipment=row.get("設備", ""),
+        pets=row.get("是否可寵物", ""),
+        smoking=row.get("是否可抽菸", ""),
+        short_term=row.get("短租", ""),
+        water_dispenser=row.get("飲水機", ""),
+        parcel_box=row.get("子母車", ""),
+        parking=row.get("車位", ""),
+        management_fee=row.get("管理費", ""),
+        features=row.get("特徵", ""),
+        note=row.get("備註", ""),
+        visit_method=row.get("帶看方式", ""),
+        reservation_link="#",
+        similar_link=similar_link
+    )
+
 
 
 
