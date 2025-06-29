@@ -13,6 +13,23 @@ from io import BytesIO
 from werkzeug.utils import secure_filename
 import pandas as pd
 
+
+cached_rent_df = None
+
+def load_rent_data():
+    global cached_rent_df
+    if cached_rent_df is None:
+        folder = "data/rent"
+        files = [f for f in os.listdir(folder) if f.endswith(".xlsx")]
+        if not files:
+            raise FileNotFoundError("找不到 Excel 檔")
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
+        latest_file = os.path.join(folder, files[0])
+        cached_rent_df = pd.read_excel(latest_file)
+        cached_rent_df.columns = cached_rent_df.columns.str.strip()
+    return cached_rent_df
+
+
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -612,16 +629,11 @@ def rent():
 
 @app.route('/edm/<int:house_id>')
 def edm(house_id):
-    # 讀取最新 Excel
-    folder = "data/rent"
-    files = [f for f in os.listdir(folder) if f.endswith(".xlsx")]
-    if not files:
-        return "找不到 Excel 檔", 404
-    files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
-    latest_file = os.path.join(folder, files[0])
+    try:
+        df = load_rent_data()
+    except Exception as e:
+        return str(e), 500
 
-    df = pd.read_excel(latest_file)
-    df.columns = df.columns.str.strip()
     if "物件編號" not in df.columns:
         return "欄位名稱錯誤，缺少『物件編號』", 400
 
@@ -630,15 +642,15 @@ def edm(house_id):
         return f"找不到物件編號 {house_id}", 404
     row = house.iloc[0]
 
-    # 地址處理
+    # 地址簡化
     full_address = row.get("地址", "")
     simplified_address = simplify_address(full_address)
 
     # 處理圖片
     raw_images = row.get("圖片連結", "")
-    image_list = [img.strip() for img in str(raw_images).split(',') if isinstance(img, str) and img.strip().startswith("http")]
+    image_list = [img.strip() for img in str(raw_images).split(',') if img.strip().startswith("http")]
 
-    # 相似物件參數
+    # 相似物件連結
     base_url = "/rent?"
     params = []
     if pd.notna(row.get("地區", "")):
@@ -649,14 +661,12 @@ def edm(house_id):
         params.append(f"styles={row['房屋類型']}")
     if isinstance(row.get("特徵", ""), str) and "可寵物" in row["特徵"]:
         params.append("pets=可寵")
-
     try:
         rent_val = int(row.get("租金", 0))
         params.append(f"price_min={max(rent_val - 500, 0)}")
         params.append(f"price_max={rent_val + 2000}")
     except:
         pass
-
     similar_link = base_url + "&".join(params)
 
     return render_template("edm.html",
@@ -688,6 +698,7 @@ def edm(house_id):
         reservation_link="#",
         similar_link=similar_link
     )
+
 
 
 
