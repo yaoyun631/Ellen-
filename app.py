@@ -12,42 +12,13 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from werkzeug.utils import secure_filename
 import pandas as pd
+import sqlite3
 
+df = pd.read_excel("data/rent/房源總表.xlsx")
+conn = sqlite3.connect("rent_data.db")
+df.to_sql("rent", conn, if_exists="replace", index=False)
+conn.close()
 
-cached_rent_data = None
-
-def load_rent_json():
-    global cached_rent_data
-    if cached_rent_data is None:
-        folder = "data/rent"
-        json_files = [f for f in os.listdir(folder) if f.endswith(".json")]
-        if not json_files:
-            raise FileNotFoundError("找不到 JSON 檔案")
-
-        # 找出最新修改的檔案
-        json_files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
-        latest_json = os.path.join(folder, json_files[0])
-
-        with open(latest_json, encoding="utf-8") as f:
-            cached_rent_data = json.load(f)
-    return cached_rent_data
-
-
-
-cached_rent_df = None
-
-def load_rent_data():
-    global cached_rent_df
-    if cached_rent_df is None:
-        folder = "data/rent"
-        files = [f for f in os.listdir(folder) if f.endswith(".xlsx")]
-        if not files:
-            raise FileNotFoundError("找不到 Excel 檔")
-        files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
-        latest_file = os.path.join(folder, files[0])
-        cached_rent_df = pd.read_excel(latest_file)
-        cached_rent_df.columns = cached_rent_df.columns.str.strip()
-    return cached_rent_df
 
 
 app = Flask(__name__)
@@ -646,64 +617,82 @@ def rent():
                            taichung_districts=taichung_districts
                            )
 
+import pandas as pd
+import sqlite3
 
-@app.route('/edm/<int:house_id>')
+df = pd.read_excel("data/rent/房源總表.xlsx")  # 路徑換成你的Excel檔案
+conn = sqlite3.connect("rent_data.db")
+conn.row_factory = sqlite3.Row  # 讓結果可以用欄位名稱存取
+cur = conn.cursor()
+df.to_sql("rent", conn, if_exists="replace", index=False)  # 建立或覆寫rent資料表
+
+conn.close()
+
+@app.route("/edm/<int:house_id>")
 def edm(house_id):
-    data = load_rent_json()
-    house = next((row for row in data if str(row.get("物件編號")) == str(house_id)), None)
-    if not house:
+    conn = sqlite3.connect("rent_data.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM rent WHERE `物件編號` = ?", (house_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
         return f"找不到物件編號 {house_id}", 404
 
-    full_address = house.get("地址", "")
+    # 地址處理
+    full_address = row["地址"]
     simplified_address = simplify_address(full_address)
 
-    image_list = [img.strip() for img in str(house.get("圖片連結", "")).split(',') if img.strip().startswith("http")]
+    # 處理圖片
+    raw_images = row["圖片連結"]
+    image_list = [img.strip() for img in str(raw_images).split(",") if img.strip().startswith("http")]
 
     # 相似物件連結
-    base_url = "/rent?"
     params = []
-    if house.get("地區"):
-        params.append(f"areas={house['地區']}")
-    if house.get("房屋形式"):
-        params.append(f"house_forms={house['房屋形式']}")
-    if house.get("房屋類型"):
-        params.append(f"styles={house['房屋類型']}")
-    if "可寵物" in str(house.get("特徵", "")):
+    if row["地區"]:
+        params.append(f"areas={row['地區']}")
+    if row["房屋形式"]:
+        params.append(f"house_forms={row['房屋形式']}")
+    if row["房屋類型"]:
+        params.append(f"styles={row['房屋類型']}")
+    if isinstance(row["特徵"], str) and "可寵物" in row["特徵"]:
         params.append("pets=可寵")
     try:
-        rent_val = int(house.get("租金", 0))
+        rent_val = int(row["租金"])
         params.append(f"price_min={max(rent_val - 500, 0)}")
         params.append(f"price_max={rent_val + 2000}")
     except:
         pass
-    similar_link = base_url + "&".join(params)
+
+    similar_link = "/rent?" + "&".join(params)
 
     return render_template("edm.html",
         house_image_urls=image_list,
-        region=house.get("地區", ""),
+        region=row["地區"],
         address=simplified_address,
         full_address=full_address,
-        rent=house.get("租金", ""),
-        room_number=house.get("房號", ""),
-        layout=house.get("格局", ""),
-        house_type=house.get("房屋類型", ""),
-        house_form=house.get("房屋形式", ""),
-        floor=house.get("樓層", ""),
-        total_floors=house.get("總樓層", ""),
-        elevator=house.get("是否有電梯", ""),
-        electricity_fee=house.get("電費", ""),
-        water_fee=house.get("水費", ""),
-        equipment=house.get("設備", ""),
-        pets=house.get("是否可寵物", ""),
-        smoking=house.get("是否可抽菸", ""),
-        short_term=house.get("短租", ""),
-        water_dispenser=house.get("飲水機", ""),
-        parcel_box=house.get("子母車", ""),
-        parking=house.get("車位", ""),
-        management_fee=house.get("管理費", ""),
-        features=house.get("特徵", ""),
-        note=house.get("備註", ""),
-        visit_method=house.get("帶看方式", ""),
+        rent=row["租金"],
+        room_number=row["房號"],
+        layout=row["格局"],
+        house_type=row["房屋類型"],
+        house_form=row["房屋形式"],
+        floor=row["樓層"],
+        total_floors=row["總樓層"],
+        elevator=row["是否有電梯"],
+        electricity_fee=row["電費"],
+        water_fee=row["水費"],
+        equipment=row["設備"],
+        pets=row["是否可寵物"],
+        smoking=row["是否可抽菸"],
+        short_term=row["短租"],
+        water_dispenser=row["飲水機"],
+        parcel_box=row["子母車"],
+        parking=row["車位"],
+        management_fee=row["管理費"],
+        features=row["特徵"],
+        note=row["備註"],
+        visit_method=row["帶看方式"],
         reservation_link="#",
         similar_link=similar_link
     )
