@@ -154,7 +154,7 @@
   <div class="row row-cols-1 row-cols-md-3 g-4">
     {% for row in data %}
     <div class="col">
-      <a href="{{ url_for('edm', house_id=row['物件編號']) }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
+       <a href="{{ url_for('static', filename='edm_pages/' ~ row.物件編號 ~ '.html') }}" target="_blank" style="text-decoration:none; color:inherit;">
         <div class="card h-100 shadow-sm">
           <!-- ✅ 新增圖片顯示區塊 -->
           {% set first_image = (row['圖片連結'].split(',')[0].strip()) if row['圖片連結'] else '' %}
