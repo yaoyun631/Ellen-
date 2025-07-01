@@ -13,12 +13,47 @@ from io import BytesIO
 from werkzeug.utils import secure_filename
 import pandas as pd
 import sqlite3
+import requests
+
+def get_existing_images(house_id):
+    base_url = f"https://hq.houseol.com.tw/images/pictures/H229{house_id}"
+    valid_images = []
+    for ch in "abcdefghijklmnopqr":  # 最多18張
+        url = f"{base_url}{ch}.jpg"
+        try:
+            response = requests.head(url, timeout=2)
+            if response.status_code == 200:
+                valid_images.append(url)
+        except requests.RequestException:
+            continue
+    return valid_images
 
 df = pd.read_excel("data/rent/房源總表.xlsx")
 conn = sqlite3.connect("rent_data.db")
 df.to_sql("rent", conn, if_exists="replace", index=False)
 conn.close()
 
+
+
+
+
+# 假設你的售屋 Excel 檔在 data/sale 目錄下
+folder = "data/sale"
+files = [f for f in os.listdir(folder) if f.endswith(".xlsx")]
+if not files:
+    print("找不到售屋 Excel 檔")
+else:
+    files.sort(key=lambda f: os.path.getmtime(os.path.join(folder, f)), reverse=True)
+    latest_file = os.path.join(folder, files[0])
+    
+    df = pd.read_excel(latest_file)
+    df.columns = df.columns.str.strip()
+    
+    conn = sqlite3.connect("sale_data.db")
+    df.to_sql("sale", conn, if_exists="replace", index=False)
+    conn.close()
+
+    
 
 
 app = Flask(__name__)
@@ -464,7 +499,7 @@ def index():
         total_pages=total_pages,
         featured_data=featured_data
     )
-
+    
     
 
 @app.route("/insights")
@@ -697,6 +732,70 @@ def edm(house_id):
         similar_link=similar_link
     )
 
+
+@app.route('/sedm/<house_id>')
+def sedm(house_id):
+    import sqlite3
+
+    conn = sqlite3.connect('sale_data.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM sale WHERE `物件編號` = ?", (house_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return f"找不到物件編號 {house_id}", 404
+
+    # ✅ 自動產生圖片網址列表（a~r）
+    base_url = "https://hq.houseol.com.tw/images/pictures/H229"
+    image_list = []
+    for suffix in "abcdefghijklmnopqr":
+        url = f"{base_url}{house_id}{suffix}.jpg"
+        image_list.append(url)
+    image_list = get_existing_images(house_id)
+    return render_template("sedm.html",
+        image_list=image_list,
+        title=row["房屋標題"],
+        region=row["區域"],
+        total_price=row["委託總價"],
+        reg_area=row["登記坪數"],
+        building_area=row["建物面積"],
+        main_area=row["主建物坪"],
+        sub_area=row["附屬建物"],
+        public_area=row["公設建坪"],
+        public_ratio=row["公設比"],
+        unit_price=row["每坪單價"],
+        land_status=row["土地登記"],
+        usage_zone=row["使用分區"],
+        base_area=row["總基地坪"],
+        floor_info=row["樓別/樓高"],
+        layout=row["房/廳/衛"],
+        parking_type=row["車位型式"],
+        parking_num=row["車位/編號"],
+        status_type=row["現況類別/謄本用途"],
+        building_type=row["類型/現況"],
+        community=row["社區/建物"],
+        management_fee=row["管理費用| 車位管理費"],
+        direction=row["物件座向"],
+        road_width=row["面臨路寬"],
+        build_date=row["竣工日期"],
+        age=row["屋齡"],
+        appearance=row["建物外觀"],
+        structure=row["建物結構"],
+        near_park=row["鄰近公園"],
+        near_market=row["鄰近市場"],
+        near_school=row["鄰近學校"],
+        circle=row["生 活 圈"],
+        house_id=row["物件編號"],
+        key_status=row["鑰匙/帶看"],
+        gas=row["瓦斯"],
+        units_per_floor=row["每層戶數"],
+        corner=row["邊　　間"],
+        elevators=row["電梯總數"],
+        feature=row["環境特色"],
+        map_link=row["地圖連結"]
+    )
 
 
 

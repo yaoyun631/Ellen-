@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }} | {{ total_price }} </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f7f3ef;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+    }
+    /* 固定 4:3 比例容器 */
+    .image-container {
+      position: relative;
+      width: 100%;
+      padding-top: 75%; /* 4:3 高寬比 */
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .image-container img {
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .header-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .header-bar img {
+      width: 120px;
+      margin-right: 16px;
+    }
+    /* 標題加粗 */
+    .header-bar h2 {
+      font-weight: 700;
+      margin: 0;
+      font-size: 1.8rem;
+      line-height: 1.2;
+    }
+    /* 價格放大且加粗 */
+    .price-text {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #d33;
+      margin-bottom: 0.3rem;
+    }
+    /* 區域文字加粗放大並且帶連結 */
+    .region-link {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #222;
+      text-decoration: none;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+    .region-link:hover {
+      text-decoration: underline;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+      font-size: 0.95rem;
+      color: #444;
+      margin-top: 8px;
+    }
+    .info-grid div {
+      white-space: pre-wrap;
+    }
+    .btn-bottom {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 24px;
+    }
+    .btn-bottom .btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.9rem;
+      padding: 10px;
+      width: 30%;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .btn-bottom .btn:hover {
+      background-color: #eee;
+    }
+    .btn-bottom img {
+      width: 24px;
+      height: 24px;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 標題與 Logo -->
+    <div class="header-bar">
+      <img src="../images/logo.png" alt="logo" />
+      <h2>{{ title }}</h2>
+    </div>
+
+    <!-- 圖片輪播區 -->
+    {% if image_list and image_list|length > 0 %}
+      {% if image_list|length == 1 %}
+        <div class="image-container">
+          <img src="{{ image_list[0] }}" alt="主圖" />
+        </div>
+      {% else %}
+        <div id="houseCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            {% for img_url in image_list %}
+            <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+              <div class="image-container">
+                <img src="{{ img_url }}" alt="圖片{{ loop.index }}" />
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#houseCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">上一張</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#houseCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">下一張</span>
+          </button>
+        </div>
+      {% endif %}
+    {% endif %}
+
+        <!-- 價格 -->
+    <h4 class="price-text">{{ total_price }}</h4>
+
+    <!-- 區域連結 -->
+    {% if region and map_link %}
+      <a href="{{ map_link }}" target="_blank" class="region-link">{{ region }}</a>
+    {% elif region %}
+      <span class="region-link">{{ region }}</span>
+    {% endif %}
+
+    <!-- 物件資訊 -->
+    <div class="info-grid">
+      {% if reg_area %}<div>登記坪數：{{ reg_area }}</div>{% endif %}
+      {% if building_area %}<div>建物面積：{{ building_area }}</div>{% endif %}
+      {% if main_area %}<div>主建物坪：{{ main_area }}</div>{% endif %}
+      {% if sub_area %}<div>附屬建物：{{ sub_area }}</div>{% endif %}
+      {% if public_area %}<div>公設建坪：{{ public_area }}</div>{% endif %}
+      {% if public_ratio %}<div>公設比：{{ public_ratio }}</div>{% endif %}
+      {% if unit_price %}<div>每坪單價：{{ unit_price }}</div>{% endif %}
+      {% if land_status %}<div>土地登記：{{ land_status }}</div>{% endif %}
+      {% if usage_zone %}<div>使用分區：{{ usage_zone }}</div>{% endif %}
+      {% if base_area %}<div>總基地坪：{{ base_area }}</div>{% endif %}
+      {% if floor_info %}<div>樓別/樓高：{{ floor_info }}</div>{% endif %}
+      {% if layout %}<div>房/廳/衛：{{ layout }}</div>{% endif %}
+      {% if parking_type %}<div>車位型式：{{ parking_type }}</div>{% endif %}
+      {% if parking_num %}<div>車位/編號：{{ parking_num }}</div>{% endif %}
+      {% if status_type %}<div>現況類別/謄本用途：{{ status_type }}</div>{% endif %}
+      {% if building_type %}<div>類型/現況：{{ building_type }}</div>{% endif %}
+      {% if community %}<div>社區/建物：{{ community }}</div>{% endif %}
+      {% if management_fee %}<div>管理費用：{{ management_fee }}</div>{% endif %}
+      {% if direction %}<div>物件座向：{{ direction }}</div>{% endif %}
+      {% if road_width %}<div>面臨路寬：{{ road_width }}</div>{% endif %}
+      {% if build_date %}<div>竣工日期：{{ build_date }}</div>{% endif %}
+      {% if age %}<div>屋齡：{{ age }}</div>{% endif %}
+      {% if appearance %}<div>建物外觀：{{ appearance }}</div>{% endif %}
+      {% if structure %}<div>建物結構：{{ structure }}</div>{% endif %}
+      {% if near_park %}<div>鄰近公園：{{ near_park }}</div>{% endif %}
+      {% if near_market %}<div>鄰近市場：{{ near_market }}</div>{% endif %}
+      {% if near_school %}<div>鄰近學校：{{ near_school }}</div>{% endif %}
+      {% if circle %}<div>生活圈：{{ circle }}</div>{% endif %}
+      {% if house_id %}<div>物件編號：{{ house_id }}</div>{% endif %}
+      {% if gas %}<div>瓦斯：{{ gas }}</div>{% endif %}
+      {% if units_per_floor %}<div>每層戶數：{{ units_per_floor }}</div>{% endif %}
+      {% if corner %}<div>邊間：{{ corner }}</div>{% endif %}
+      {% if elevators %}<div>電梯總數：{{ elevators }}</div>{% endif %}
+      {% if feature %}<div>環境特色：{{ feature }}</div>{% endif %}
+    </div>
+
+    <!-- 下方按鈕區 -->
+    <div class="btn-bottom">
+      <a href="tel:0909663034" class="btn btn-outline-dark">
+        <img src="../images/icon/立即預約.png" alt="立即預約" />
+        立即預約
+      </a>
+      <a href="https://line.me/ti/p/A1CNJf_2-L" target="_blank" class="btn btn-outline-success">
+        <img src="../images/icon/Line.png" alt="LINE詢問" />
+        LINE 詢問
+      </a>
+      <a href="https://ellen-my-homie.onrender.com" class="btn btn-outline-secondary">
+        <img src="../images/icon/猜你喜歡.png" alt="猜你喜歡" />
+        猜你喜歡
+      </a>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
