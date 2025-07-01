@@ -143,13 +143,6 @@
           </select>
         </div>
 
-        <!-- 查詢按鈕 -->
-        <div class="col-12 text-center">
-          <button type="submit" class="btn mt-3" style="background-color: #fa782a; color: white;">
-            查詢
-          </button>
-        </div>
-
       </div>
     </form>
   </div>
@@ -197,6 +190,41 @@
   </div>
 
 </div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("rentSearchForm");
+
+    // 所有需要觸發自動查詢的欄位
+    const inputs = form.querySelectorAll("select, input");
+
+    // 每次變動就送出查詢（可加上 debounce 延遲送出）
+    inputs.forEach(input => {
+      input.addEventListener("change", () => {
+        form.submit();
+      });
+    });
+
+    // 如果用戶輸入文字，例如 keyword 或數字欄位，等 0.5 秒沒打字再送出
+    const typingInputs = form.querySelectorAll('input[type="text"], input[type="number"]');
+    let typingTimer;
+    typingInputs.forEach(input => {
+      input.addEventListener("input", () => {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+          form.submit();
+        }, 500); // 0.5 秒延遲
+      });
+    });
+
+    // 全選區域處理（避免一點就跳轉）
+    const areaAll = document.getElementById("area_all");
+    if (areaAll) {
+      areaAll.addEventListener("change", () => {
+        setTimeout(() => form.submit(), 300);
+      });
+    }
+  });
+</script>
 
 <script>
   function toggleAll(source) {
