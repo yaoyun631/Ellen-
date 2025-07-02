@@ -571,19 +571,22 @@ def rent():
             continue
         if selected_has_wheelie_bin and row['子母車'] != '有':
             continue
-        if selected_has_sink and '流理台' not in row['特徵']:
+        if selected_has_sink and ('流理台' not in (row['特徵'] or '')):
             continue
-        if selected_has_bath_separate and '乾濕分離' not in row['特徵']:
+        if selected_has_bath_separate and ('乾濕分離' not in (row['特徵'] or '')):
             continue
-        if selected_has_washer_indep and '獨洗' not in row['特徵']:
+        if selected_has_washer_indep and ('獨洗' not in (row['特徵'] or '')):
             continue
-        if keyword and keyword not in row['地址'] and keyword not in row['備註']:
-            continue
+
+        if keyword:
+            if keyword not in (row['地址'] or '') and keyword not in (row['備註'] or ''):
+                continue
 
         try:
             房數 = int(row['格局'].split('房')[0])
         except:
             房數 = 0
+
 
         try:
             租金 = int(row['租金'])
