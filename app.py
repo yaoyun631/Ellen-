@@ -509,9 +509,6 @@ def insights():
 
 
 
-import sqlite3
-from flask import request, render_template
-
 @app.route('/rent')
 def rent():
     selected_areas = request.args.getlist('areas')
@@ -655,19 +652,29 @@ def rent():
     )
 
 
-import pandas as pd
-import sqlite3
+@app.route('/admin/query', methods=['GET', 'POST'])
+def admin_query():
+    result = None
+    error = None
 
-df = pd.read_excel("data/rent/房源總表.xlsx")  # 路徑換成你的Excel檔案
-conn = sqlite3.connect("rent_data.db")
-conn.row_factory = sqlite3.Row  # 讓結果可以用欄位名稱存取
-cur = conn.cursor()
-df.to_sql("rent", conn, if_exists="replace", index=False)  # 建立或覆寫rent資料表
+    if request.method == 'POST':
+        house_id = request.form.get('house_id', '').strip()
+        if not house_id:
+            error = "請輸入物件編號"
+        else:
+            conn = sqlite3.connect("rent_data.db")
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM rent WHERE 物件編號 = ?", (house_id,))
+            row = cur.fetchone()
+            conn.close()
 
-conn.close()
+            if row:
+                result = dict(row)
+            else:
+                error = f"找不到物件編號 {house_id}"
 
-
-
+    return render_template('admin_query.html', result=result, error=error)
 
 
 
