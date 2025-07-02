@@ -600,7 +600,7 @@ def rent():
         first_image = row['圖片連結'].split(',')[0] if row['圖片連結'] else ''
 
         data.append({
-            'title': row['地址'],
+            'title': simplify_address(row['地址']),
             'district': row['地區'],
             'edm_link': row['EDM連結'],
             '類型': row['房屋類型'],
