@@ -509,9 +509,11 @@ def insights():
 
 
 
+import sqlite3
+from flask import request, render_template
+
 @app.route('/rent')
 def rent():
-    # 取得篩選參數
     selected_areas = request.args.getlist('areas')
     selected_styles = request.args.getlist('styles')
     selected_house_types = request.args.getlist('house_types')
@@ -524,10 +526,7 @@ def rent():
     price_max = request.args.get('price_max')
     sort_by = request.args.get('sort_by', '')
 
-    # 新增：特色條件
     selected_has_balcony = request.args.get('has_balcony') == '1'
-    selected_has_electric = request.args.get('has_electric') == '1'
-    selected_has_water = request.args.get('has_water') == '1'
     selected_has_parking = request.args.get('has_parking') == '1'
     selected_has_water_cooler = request.args.get('has_water_cooler') == '1'
     selected_has_wheelie_bin = request.args.get('has_wheelie_bin') == '1'
@@ -535,7 +534,6 @@ def rent():
     selected_has_bath_separate = request.args.get('has_bath_separate') == '1'
     selected_has_washer_indep = request.args.get('has_washer_indep') == '1'
 
-    # 數字轉換（空值或非數字用預設）
     def to_int(val, default):
         try:
             return int(val)
@@ -547,110 +545,115 @@ def rent():
     price_min = to_int(price_min, 0)
     price_max = to_int(price_max, 9999999)
 
-    excel_file = get_latest_excel_file(RENT_DATA_DIR)
+    conn = sqlite3.connect("rent_data.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM rent")
+    rows = cur.fetchall()
+    conn.close()
+
     data = []
-    taichung_districts = []
+    taichung_districts = set()
 
-    if excel_file:
-        df = pd.read_excel(excel_file)
-        df.fillna('', inplace=True)
+    for row in rows:
+        taichung_districts.add(row['地區'])
 
-        # 確保數字欄位型態，租金為數字
-        df['租金'] = pd.to_numeric(df['租金'], errors='coerce').fillna(0)
+        if selected_areas and row['地區'] not in selected_areas:
+            continue
+        if selected_house_forms and row['房屋形式'] not in selected_house_forms:
+            continue
+        if selected_house_types and row['房屋類型'] not in selected_house_types:
+            continue
+        if selected_pets and row['是否可寵物'] in ['不可']:
+            continue
+        if selected_has_balcony and row['陽台'] != '有':
+            continue
+        if selected_has_parking and '有' not in row['車位']:
+            continue
+        if selected_has_water_cooler and row['飲水機'] != '有':
+            continue
+        if selected_has_wheelie_bin and row['子母車'] != '有':
+            continue
+        if selected_has_sink and '流理台' not in row['特徵']:
+            continue
+        if selected_has_bath_separate and '乾濕分離' not in row['特徵']:
+            continue
+        if selected_has_washer_indep and '獨洗' not in row['特徵']:
+            continue
+        if keyword and keyword not in row['地址'] and keyword not in row['備註']:
+            continue
 
-        # 解析格局房數 (ex: "3房2廳" 取3)
-        df['房數'] = df['格局'].str.extract(r'(\d+)房')[0].fillna(0).astype(float)
+        try:
+            房數 = int(row['格局'].split('房')[0])
+        except:
+            房數 = 0
 
-        # 取得台中區域列表
-        taichung_districts = sorted(df['地區'].unique().tolist())
+        try:
+            租金 = int(row['租金'])
+        except:
+            租金 = 0
 
-        # 篩選條件
-        if selected_areas:
-            df = df[df['地區'].isin(selected_areas)]
-        if selected_house_forms:
-            df = df[df['房屋形式'].isin(selected_house_forms)]
-        if selected_house_types:
-            df = df[df['房屋類型'].isin(selected_house_types)]
-        if selected_pets:
-            df = df[~df['是否可寵物'].isin(['不可'])]  # 排除不可
-        if selected_has_balcony:
-            df = df[df['陽台'] == '有']
-        if selected_has_parking:
-            df = df[df['車位'].str.contains('有', na=False)]
-        if selected_has_water_cooler:
-            df = df[df['飲水機'] == '有']
-        if selected_has_wheelie_bin:
-            df = df[df['子母車'] == '有']
-        if selected_has_sink:
-            df = df[df['特徵'].str.contains('流理台', na=False)]
-        if selected_has_bath_separate:
-            df = df[df['特徵'].str.contains('乾濕分離', na=False)]
-        if selected_has_washer_indep:
-            df = df[df['特徵'].str.contains('獨洗', na=False)]
-        if keyword:
-            df = df[df['地址'].str.contains(keyword, na=False) | df['備註'].str.contains(keyword, na=False)]
+        if not (room_min <= 房數 <= room_max and price_min <= 租金 <= price_max):
+            continue
 
-        df = df[(df['房數'] >= room_min) & (df['房數'] <= room_max)]
-        df = df[(df['租金'] >= price_min) & (df['租金'] <= price_max)]
+        # 取第一張圖片
+        first_image = row['圖片連結'].split(',')[0] if row['圖片連結'] else ''
 
-        # 排序
-        if sort_by == 'price_asc':
-            df = df.sort_values(by='租金', ascending=True)
-        elif sort_by == 'price_desc':
-            df = df.sort_values(by='租金', ascending=False)
-        elif sort_by == 'room_asc':
-            df = df.sort_values(by='房數', ascending=True)
-        elif sort_by == 'room_desc':
-            df = df.sort_values(by='房數', ascending=False)
-        else:
-            df = df.sort_values(by='物件編號', ascending=False)
+        data.append({
+            'title': row['地址'],
+            'district': row['地區'],
+            'edm_link': row['EDM連結'],
+            '類型': row['房屋類型'],
+            '格局': row['格局'],
+            '租金': 租金,
+            '型式': row['房屋形式'],
+            '是否可寵物': row['是否可寵物'],
+            '設備': row['設備'],
+            '圖片連結': first_image,
+            '電費': row['電費'],
+            '水費': row['水費'],
+            '陽台': row['陽台'],
+            '物件編號': row['物件編號']
+        })
 
-        for _, row in df.iterrows():
-            simplified_address = simplify_address(row.get("地址", ""))
-
-            data.append({
-                'title': simplified_address,
-                'district': row.get('地區', ''),
-                'edm_link': row.get('EDM連結', '#'),
-                '類型': row.get('房屋類型', ''),
-                '格局': row.get('格局', ''),
-                '租金': row.get('租金', '價格洽詢'),
-                '型式': row.get('房屋形式', ''),
-                '是否可寵物': row.get('是否可寵物', ''),
-                '設備': row.get('設備', ''),
-                '圖片連結': row.get('圖片連結', ''),
-                '電費': row.get('電費', ''),
-                '水費': row.get('水費', ''),
-                '陽台': row.get('陽台', ''),
-                '物件編號': row.get('物件編號', ''),
-                
-            })
+    # 排序
+    if sort_by == 'price_asc':
+        data.sort(key=lambda x: x['租金'])
+    elif sort_by == 'price_desc':
+        data.sort(key=lambda x: -x['租金'])
+    elif sort_by == 'room_asc':
+        data.sort(key=lambda x: int(x['格局'].split('房')[0]) if '房' in x['格局'] else 0)
+    elif sort_by == 'room_desc':
+        data.sort(key=lambda x: -int(x['格局'].split('房')[0]) if '房' in x['格局'] else 0)
+    else:
+        data.sort(key=lambda x: x['物件編號'], reverse=True)
 
     return render_template('rent.html',
-                           data=data,
-                           total_records=len(data),
-                           sort_by=sort_by,
-                           keyword=keyword,
-                           selected_areas=selected_areas,
-                           selected_styles=selected_styles,
-                           selected_house_forms=selected_house_forms,
-                           selected_house_types=selected_house_types,
-                           selected_pets=selected_pets,
-                           selected_has_electric=selected_has_electric,
-                           selected_has_water=selected_has_water,
-                           selected_has_balcony=selected_has_balcony,
-                           selected_has_parking=selected_has_parking,
-                           selected_has_water_cooler=selected_has_water_cooler,
-                           selected_has_wheelie_bin=selected_has_wheelie_bin,
-                           selected_has_sink=selected_has_sink,
-                           selected_has_bath_separate=selected_has_bath_separate,
-                           selected_has_washer_indep=selected_has_washer_indep,
-                           room_min='' if room_min == 0 else room_min,
-                           room_max='' if room_max == 99 else room_max,
-                           price_min='' if price_min == 0 else price_min,
-                           price_max='' if price_max == 9999999 else price_max,
-                           taichung_districts=taichung_districts
-                           )
+        data=data,
+        total_records=len(data),
+        sort_by=sort_by,
+        keyword=keyword,
+        selected_areas=selected_areas,
+        selected_styles=selected_styles,
+        selected_house_forms=selected_house_forms,
+        selected_house_types=selected_house_types,
+        selected_pets=selected_pets,
+        selected_has_electric=False,
+        selected_has_water=False,
+        selected_has_balcony=selected_has_balcony,
+        selected_has_parking=selected_has_parking,
+        selected_has_water_cooler=selected_has_water_cooler,
+        selected_has_wheelie_bin=selected_has_wheelie_bin,
+        selected_has_sink=selected_has_sink,
+        selected_has_bath_separate=selected_has_bath_separate,
+        selected_has_washer_indep=selected_has_washer_indep,
+        room_min='' if room_min == 0 else room_min,
+        room_max='' if room_max == 99 else room_max,
+        price_min='' if price_min == 0 else price_min,
+        price_max='' if price_max == 9999999 else price_max,
+        taichung_districts=sorted(list(taichung_districts))
+    )
+
 
 import pandas as pd
 import sqlite3
@@ -663,139 +666,6 @@ df.to_sql("rent", conn, if_exists="replace", index=False)  # 建立或覆寫rent
 
 conn.close()
 
-@app.route("/edm/<int:house_id>")
-def edm(house_id):
-    conn = sqlite3.connect("rent_data.db")
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM rent WHERE `物件編號` = ?", (house_id,))
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        return f"找不到物件編號 {house_id}", 404
-
-    # 地址處理
-    full_address = row["地址"]
-    simplified_address = simplify_address(full_address)
-
-    # 處理圖片
-    raw_images = row["圖片連結"]
-    image_list = [img.strip() for img in str(raw_images).split(",") if img.strip().startswith("http")]
-
-    # 相似物件連結
-    params = []
-    if row["地區"]:
-        params.append(f"areas={row['地區']}")
-    if row["房屋形式"]:
-        params.append(f"house_forms={row['房屋形式']}")
-    if row["房屋類型"]:
-        params.append(f"styles={row['房屋類型']}")
-    if isinstance(row["特徵"], str) and "可寵物" in row["特徵"]:
-        params.append("pets=可寵")
-    try:
-        rent_val = int(row["租金"])
-        params.append(f"price_min={max(rent_val - 500, 0)}")
-        params.append(f"price_max={rent_val + 2000}")
-    except:
-        pass
-
-    similar_link = "/rent?" + "&".join(params)
-
-    return render_template("edm.html",
-        house_image_urls=image_list,
-        region=row["地區"],
-        address=simplified_address,
-        full_address=full_address,
-        rent=row["租金"],
-        room_number=row["房號"],
-        layout=row["格局"],
-        house_type=row["房屋類型"],
-        house_form=row["房屋形式"],
-        floor=row["樓層"],
-        total_floors=row["總樓層"],
-        elevator=row["是否有電梯"],
-        electricity_fee=row["電費"],
-        water_fee=row["水費"],
-        equipment=row["設備"],
-        pets=row["是否可寵物"],
-        smoking=row["是否可抽菸"],
-        short_term=row["短租"],
-        water_dispenser=row["飲水機"],
-        parcel_box=row["子母車"],
-        parking=row["車位"],
-        management_fee=row["管理費"],
-        features=row["特徵"],
-        note=row["備註"],
-        visit_method=row["帶看方式"],
-        reservation_link="#",
-        similar_link=similar_link
-    )
-
-
-@app.route('/sedm/<house_id>')
-def sedm(house_id):
-    import sqlite3
-
-    conn = sqlite3.connect('sale_data.db')
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM sale WHERE `物件編號` = ?", (house_id,))
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        return f"找不到物件編號 {house_id}", 404
-
-    # ✅ 自動產生圖片網址列表（a~r）
-    base_url = "https://hq.houseol.com.tw/images/pictures/H229"
-    image_list = []
-    for suffix in "abcdefghijklmnopqr":
-        url = f"{base_url}{house_id}{suffix}.jpg"
-        image_list.append(url)
-    image_list = get_existing_images(house_id)
-    return render_template("sedm.html",
-        image_list=image_list,
-        title=row["房屋標題"],
-        region=row["區域"],
-        total_price=row["委託總價"],
-        reg_area=row["登記坪數"],
-        building_area=row["建物面積"],
-        main_area=row["主建物坪"],
-        sub_area=row["附屬建物"],
-        public_area=row["公設建坪"],
-        public_ratio=row["公設比"],
-        unit_price=row["每坪單價"],
-        land_status=row["土地登記"],
-        usage_zone=row["使用分區"],
-        base_area=row["總基地坪"],
-        floor_info=row["樓別/樓高"],
-        layout=row["房/廳/衛"],
-        parking_type=row["車位型式"],
-        parking_num=row["車位/編號"],
-        status_type=row["現況類別/謄本用途"],
-        building_type=row["類型/現況"],
-        community=row["社區/建物"],
-        management_fee=row["管理費用| 車位管理費"],
-        direction=row["物件座向"],
-        road_width=row["面臨路寬"],
-        build_date=row["竣工日期"],
-        age=row["屋齡"],
-        appearance=row["建物外觀"],
-        structure=row["建物結構"],
-        near_park=row["鄰近公園"],
-        near_market=row["鄰近市場"],
-        near_school=row["鄰近學校"],
-        circle=row["生 活 圈"],
-        house_id=row["物件編號"],
-        key_status=row["鑰匙/帶看"],
-        gas=row["瓦斯"],
-        units_per_floor=row["每層戶數"],
-        corner=row["邊　　間"],
-        elevators=row["電梯總數"],
-        feature=row["環境特色"],
-        map_link=row["地圖連結"]
-    )
 
 
 
