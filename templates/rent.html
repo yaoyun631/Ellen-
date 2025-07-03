@@ -170,7 +170,9 @@
 
   <!-- 顯示符合資料筆數 -->
   <p>符合條件資料筆數：{{ total_records }}</p>
-
+  
+  <!-- 公告 -->
+  <p>圖片陸續更新中，如需看更多詳細照片，可以私訊Line，看物件詳細資訊喔~</p>
   <!-- 租屋列表 -->
   <div class="row row-cols-1 row-cols-md-3 g-4">
     {% for row in data %}
@@ -188,8 +190,8 @@
           <div class="card-body">
             <h5 class="card-title">{{ row['title'] }}</h5>
             <p class="card-text text-muted">
-              區域：{{ row['district'] }}<br>
-              格局：{{ row['格局'] }} ｜ 寵物：{{ row['是否可寵物'] or '-' }}<br>
+              {{ row['district'] }} | {{ row['物件編號'] }}<br>
+              {{ row['格局'] }} ｜ 寵物：{{ row['是否可寵物'] or '-' }}<br>
               水費:{{ row['水費'] }}｜電費:{{ row['電費'] }}<br>
               設備：{{ row['設備'] or '-' }}
             </p>

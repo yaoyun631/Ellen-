@@ -21,7 +21,7 @@
     }
 
     form {
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       text-align: center;
     }
 
@@ -65,6 +65,22 @@
       color: #555;
     }
 
+    .keypad {
+      text-align: center;
+      margin-top: 10px;
+      display: none; /* 初始隱藏 */
+    }
+
+    .keypad-grid {
+      display: inline-grid;
+      grid-template-columns: repeat(3, 80px);
+      gap: 10px;
+    }
+
+    .keypad-grid button {
+      width: 80px;
+    }
+
     p {
       text-align: center;
       font-size: 18px;
@@ -74,11 +90,25 @@
 <body>
   <h1>🔍 後台物件編號查詢</h1>
 
-  <form method="post">
+  <!-- 🔍 查詢表單 -->
+  <form method="post" id="search-form" onsubmit="hideKeypad()">
     <label for="house_id">請輸入物件編號：</label>
-    <input type="text" id="house_id" name="house_id" required>
+    <input type="text" id="house_id" name="house_id" required onclick="showKeypad()">
     <button type="submit">查詢</button>
   </form>
+
+  <!-- 🔢 數字鍵盤 -->
+  <div class="keypad" id="keypad">
+    <h3>快速輸入物件編號</h3>
+    <div class="keypad-grid">
+      {% for num in range(1, 10) %}
+        <button type="button" onclick="appendNumber('{{ num }}')">{{ num }}</button>
+      {% endfor %}
+      <button type="button" onclick="clearInput()">清除</button>
+      <button type="button" onclick="appendNumber('0')">0</button>
+      <button type="submit" form="search-form">查詢</button>
+    </div>
+  </div>
 
   {% if error %}
     <p style="color:red;">{{ error }}</p>
@@ -87,7 +117,11 @@
   {% if result %}
     <h2>查詢結果：</h2>
     <ul>
-      <li><strong>完整地址：</strong>{{ result['地址'] }}</li>
+      <li>
+        <strong>完整地址：</strong>
+        <span id="full-address">{{ result['地址'] }}</span>
+        <button onclick="copyAddress()" style="margin-left: 10px;">📋 複製</button>
+      </li>
       <li><strong>備註：</strong>{{ result['備註'] }}</li>
       <li><strong>帶看方式：</strong>{{ result['帶看方式'] }}</li>
       <li><strong>租金：</strong>{{ result['租金'] }}</li>
@@ -95,5 +129,31 @@
       <li><strong>房屋類型：</strong>{{ result['房屋類型'] }}</li>
     </ul>
   {% endif %}
+
+  <script>
+    function appendNumber(num) {
+      const input = document.getElementById("house_id");
+      input.value += num;
+    }
+
+    function clearInput() {
+      document.getElementById("house_id").value = '';
+    }
+
+    function copyAddress() {
+      const text = document.getElementById('full-address').innerText;
+      navigator.clipboard.writeText(text)
+        .then(() => console.log("地址已複製"))
+        .catch(err => alert('❌ 複製失敗：' + err));
+    }
+
+    function showKeypad() {
+      document.getElementById("keypad").style.display = "block";
+    }
+
+    function hideKeypad() {
+      document.getElementById("keypad").style.display = "none";
+    }
+  </script>
 </body>
 </html>
