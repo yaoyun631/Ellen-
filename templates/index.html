@@ -149,14 +149,27 @@
         {% endfor %}
       </div>
 
+      <!-- 🌟 特色 -->
+      <div class="col-12 mt-3">
+        <label class="form-label">特色</label><br />
+
+        <!-- 有電梯 -->
+        <label class="me-4">
+          <input type="checkbox" name="has_elevator" value="1" {% if selected_has_elevator %}checked{% endif %}> 有電梯
+        </label>
+
+        <!-- 有車位 -->
+        <label class="me-4">
+          <input type="checkbox" name="has_parking" value="1" {% if selected_has_parking %}checked{% endif %}> 有車位
+        </label>
+      </div>
+
+
+
       <!-- 格局 -->
       <div class="col-6 col-md-2">
         <label for="room_min" class="form-label">格局最小(房)</label>
         <input type="number" step="1" min="0" name="room_min" id="room_min" class="form-control" value="{{ room_min }}">
-      </div>
-      <div class="col-6 col-md-2">
-        <label for="room_max" class="form-label">格局最大(房)</label>
-        <input type="number" step="1" min="0" name="room_max" id="room_max" class="form-control" value="{{ room_max }}">
       </div>
 
       <!-- 總價 -->
@@ -170,14 +183,30 @@
       </div>
 
       <!-- 關鍵字 -->
-      <div class="col-12 col-md-6">
-        <label for="keyword" class="form-label">關鍵字（地址）</label>
+      <div class="col-6 col-md-2">
+        <label for="keyword" class="form-label">關鍵字</label>
         <input type="text" name="keyword" id="keyword" class="form-control" value="{{ keyword }}">
       </div>
 
+      <!-- 主建物坪數 最小 -->
+      <div class="col-6 col-md-2">
+        <label for="building_min" class="form-label">主建坪最小(坪)</label>
+        <input type="number" step="0.1" min="0" name="building_min" id="building_min"
+              class="form-control" value="{{ building_min }}">
+      </div>
+
+      <!-- 屋齡 -->
+      <div class="col-6 col-md-2">
+        <label for="age_max" class="form-label">屋齡上限</label>
+        <input type="number" name="age_max" id="age_max" class="form-control" value="{{ age_max }}">
+      </div>
+
+
+
+
       
               <!-- 排序欄位 -->
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label for="sort_by" class="form-label">排序欄位</label>
         <select name="sort_by" id="sort_by" class="form-select">
           <option value="委託總價" {% if sort_by == "委託總價" %}selected{% endif %}>總價</option>
@@ -188,7 +217,7 @@
       </div>
 
       <!-- 排序方向 -->
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label for="sort_order" class="form-label">排序方向</label>
         <select name="sort_order" id="sort_order" class="form-select">
           <option value="desc" {% if sort_order == "desc" %}selected{% endif %}>由大到小</option>

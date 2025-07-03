@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>預約時段</title>
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f7f7f7;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #CABAA1;
+    }
+    .day-block {
+      margin-bottom: 30px;
+      background-color: white;
+      padding: 15px;
+      border: 1px solid #CABAA1;
+      border-radius: 10px;
+    }
+    .day-label {
+      font-weight: bold;
+      color: #CABAA1;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    .time-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .time-slot {
+      background-color: white;
+      border: 2px solid #CABAA1;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .time-slot:hover {
+      background-color: #CABAA1;
+      color: white;
+    }
+    .selected {
+      background-color: #CABAA1;
+      color: white;
+    }
+    .form-section {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #CABAA1;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      color: #333;
+    }
+    input[type="text"], input[type="tel"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #CCC;
+      border-radius: 6px;
+    }
+    button {
+      margin-top: 15px;
+      background-color: #CABAA1;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>預約時段</h1>
+
+  <!-- 時段顯示容器 -->
+  <div id="scheduleContainer"></div>
+
+  <!-- 預約表單 -->
+  <form class="form-section" id="bookingForm">
+    <label for="name">姓名</label>
+    <input type="text" id="name" name="name" required />
+
+    <label for="phone">電話</label>
+    <input type="tel" id="phone" name="phone" required />
+
+    <input type="hidden" id="selectedSlot" name="time" />
+
+    <button type="submit">確認預約</button>
+  </form>
+
+  <script>
+    const scheduleContainer = document.getElementById('scheduleContainer');
+    const selectedSlotInput = document.getElementById('selectedSlot');
+
+    const timeSlots = [
+      "10:30", "11:30", "12:30", "13:30",
+      "14:00", "14:30", "15:30", "16:30",
+      "17:30", "18:30", "19:30", "20:30"
+    ];
+
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+    const today = new Date();
+
+    for (let i = 0; i < 7; i++) {
+      const current = new Date(today);
+      current.setDate(today.getDate() + i);
+
+      const dateStr = current.toISOString().split('T')[0];
+      const displayDate = `${String(current.getMonth() + 1).padStart(2, '0')}/${String(current.getDate()).padStart(2, '0')}(${weekdays[current.getDay()]})`;
+
+      const dayBlock = document.createElement('div');
+      dayBlock.className = 'day-block';
+
+      const label = document.createElement('div');
+      label.className = 'day-label';
+      label.textContent = displayDate;
+      dayBlock.appendChild(label);
+
+      const row = document.createElement('div');
+      row.className = 'time-row';
+
+      timeSlots.forEach(time => {
+        const btn = document.createElement('div');
+        btn.className = 'time-slot';
+        btn.textContent = time;
+        btn.dataset.datetime = `${dateStr} ${time}`;
+
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedSlotInput.value = btn.dataset.datetime;
+        });
+
+        row.appendChild(btn);
+      });
+
+      dayBlock.appendChild(row);
+      scheduleContainer.appendChild(dayBlock);
+    }
+
+    // 表單送出
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const time = selectedSlotInput.value;
+
+      if (!time) {
+        alert("請選擇一個時段");
+        return;
+      }
+
+      const res = await fetch('/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time, name, phone })
+      });
+
+      if (res.ok) {
+        alert("預約成功！");
+        location.reload();
+      } else {
+        alert("時段已被預約，請重新選擇！");
+        location.reload();
+      }
+    });
+  </script>
+</body>
+</html>

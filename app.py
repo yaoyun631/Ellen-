@@ -28,9 +28,7 @@ def get_existing_images(house_id):
             continue
     return valid_images
 
-df = pd.read_excel("data/rent/房源總表.xlsx")
 conn = sqlite3.connect("rent_data.db")
-df.to_sql("rent", conn, if_exists="replace", index=False)
 conn.close()
 
 
@@ -68,8 +66,6 @@ app.config['RENT_UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'data', 'rent')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-#頂尖物件 Excel 檔案所在資料夾
-RENT_DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'rent')
 
 
 
@@ -99,31 +95,7 @@ def simplify_address(address):
     match = re.search(r'^(.+?[段路街巷弄])', address)
     return match.group(1) if match else address
 
-def get_latest_excel_file(directory):
-    files = [f for f in os.listdir(directory) if f.lower().endswith(('.xls', '.xlsx'))]
-    if not files:
-        return None
-    files = sorted(files, key=lambda x: os.path.getmtime(os.path.join(directory, x)), reverse=True)
-    return os.path.join(directory, files[0])
 
-def parse_excel(file_path):
-    df = pd.read_excel(file_path)
-    data = []
-    for _, row in df.iterrows():
-        item = {
-            'title': row.get('地址', ''),
-            'district': row.get('地區', ''),
-            'edm_link': row.get('EDM連結', '#'),
-            '類型': row.get('房屋類型', ''),
-            '格局': row.get('格局', ''),
-            '租金': row.get('租金', '價格洽詢'),
-            'image_url': '/static/images/default_house.png' , # 預設圖片
-            '型式': row.get('房屋型式', ''),       # 🆕 加入房屋型式
-            '是否可寵物': row.get('是否可寵物', ''),     # 🆕 加入是否可寵物
-            '設備': row.get('設備', '')
-        }
-        data.append(item)
-    return data
 
 def format_layout(s):
     if not isinstance(s, str) or s.strip() == "":
@@ -301,11 +273,6 @@ taichung_districts = [
 ]
 
 
-def extract_area(addr):
-    if not isinstance(addr, str):
-        return None
-    m = re.search(r"(\S+區)", addr)
-    return m.group(1) if m else None
 
 def clean_float(val):
     try:
@@ -351,62 +318,58 @@ def save_video(region, url):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    # POST 請求時，從表單取得篩選條件
     if request.method == "POST":
-        df_raw["房/廳/衛"] = df_raw["房/廳/衛"].apply(format_layout)
-
         selected_areas = request.form.getlist("areas")
         selected_types = request.form.getlist("types")
         room_min = request.form.get("room_min", "")
         room_max = request.form.get("room_max", "")
         price_min = request.form.get("price_min", "")
         price_max = request.form.get("price_max", "")
+        building_min = request.form.get("building_min", "")
+        building_max = request.form.get("building_max", "")
         keyword = request.form.get("keyword", "")
         sort_by = request.form.get("sort_by", "委託總價")
         sort_order = request.form.get("sort_order", "asc")
+        selected_has_elevator = request.form.get("has_elevator") == "1"
+        age_min = request.form.get("age_min", "") 
+        age_max = request.form.get("age_max", "")
+        selected_has_parking = request.form.get("has_parking") == "1"  # POST
+
+
+
         page = 1
     else:
-        # GET 請求時，從 URL query string 取得篩選條件
         selected_areas = request.args.getlist("areas")
         selected_types = request.args.getlist("types")
         room_min = request.args.get("room_min", "")
         room_max = request.args.get("room_max", "")
         price_min = request.args.get("price_min", "")
         price_max = request.args.get("price_max", "")
+        building_min = request.args.get("building_min", "")
+        building_max = request.args.get("building_max", "")
         keyword = request.args.get("keyword", "")
         sort_by = request.args.get("sort_by", "委託總價")
         sort_order = request.args.get("sort_order", "asc")
+        selected_has_elevator = request.args.get("has_elevator") == "1"
         page = int(request.args.get("page", 1))
+        age_min = request.args.get("age_min", "") 
+        age_max = request.args.get("age_max", "")
+        selected_has_parking = request.args.get("has_parking") == "1"  # GET
 
-    per_page = 10
-
-    # 取得輪播圖片列表
-    slide_images = sorted([
-        f for f in os.listdir(SLIDE_FOLDER)
-        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))
-    ])
-
-    # 強銷物件篩選與整理
-    df_raw["強銷"] = df_raw.get("強銷", "否").fillna("否")
-    featured_df = df_raw[df_raw["強銷"] == "是"]
-    featured_data = featured_df.head(8).fillna("-").to_dict(orient="records")
 
     df = df_raw.copy()
     df["房/廳/衛"] = df["房/廳/衛"].apply(format_layout)
-    df['房廳衛'] = df['房/廳/衛'].apply(format_layout)
 
-    # 房間數從房/廳/衛欄位抽取（例：3房2廳2衛 -> 3）
-    if "房/廳/衛" in df.columns:
-        def extract_room_num(s):
-            if not isinstance(s, str):
-                return None
-            m = re.search(r'(\d+)房', s)
-            return int(m.group(1)) if m else None
-        df["房間數"] = df["房/廳/衛"].apply(extract_room_num)
-    else:
-        df["房間數"] = None
+    # 房間數解析
+    def extract_room_num(s):
+        if not isinstance(s, str):
+            return None
+        m = re.search(r"(\d+)房", s)
+        return int(m.group(1)) if m else None
 
-    # 篩選區域
+    df["房間數"] = df["房/廳/衛"].apply(extract_room_num)
+
+    # 區域篩選
     if selected_areas and "全部" not in selected_areas:
         if "其他" in selected_areas:
             other_areas = df[~df["區域"].isin(taichung_districts)]["區域"].unique().tolist()
@@ -415,69 +378,80 @@ def index():
         else:
             df = df[df["區域"].isin(selected_areas)]
 
-    # 篩選房型
+    # 房型篩選
     if selected_types:
         df = df[df["房型"].isin(selected_types)]
 
-    # 篩選房間數
+    # 房間數篩選
     try:
-        rmin = float(room_min) if room_min else None
-        rmax = float(room_max) if room_max else None
-        if rmin is not None:
-            df = df[df["房間數"] >= rmin]
-        if rmax is not None:
-            df = df[df["房間數"] <= rmax]
+        if room_min:
+            df = df[df["房間數"] >= int(room_min)]
+        if room_max:
+            df = df[df["房間數"] <= int(room_max)]
     except:
         pass
 
-    # 篩選價格
+    # 價格篩選
     try:
-        pmin = float(price_min) if price_min else None
-        pmax = float(price_max) if price_max else None
-        if pmin is not None:
-            df = df[df["委託總價"] >= pmin]
-        if pmax is not None:
-            df = df[df["委託總價"] <= pmax]
+        if price_min:
+            df = df[df["委託總價"] >= float(price_min)]
+        if price_max:
+            df = df[df["委託總價"] <= float(price_max)]
     except:
         pass
 
-    # 關鍵字篩選，多欄位搜尋
-    search_cols = [
-        "網址", "房屋標題", "區域", "委託總價",
-        "鄰近市場", "鄰近學校", "生活圈",
-        "社區/建物", "環境特色"
-    ]
+    # 主建物坪數篩選
+    try:
+        if building_min:
+            df = df[df["主建物坪"] >= float(building_min)]
+        if building_max:
+            df = df[df["主建物坪"] <= float(building_max)]
+    except:
+        pass
 
-    if keyword.strip():
+    # 電梯總數篩選
+    if selected_has_elevator:
+        df = df[df["電梯總數"].notnull() & (df["電梯總數"].astype(str).str.strip() != "")]
+
+    # 關鍵字搜尋
+    if keyword:
         keyword_lower = keyword.strip().lower()
-
-        def row_contains_keyword(row):
-            for col in search_cols:
-                if col in df.columns:
-                    if keyword_lower in str(row[col]).lower():
-                        return True
-            return False
-
-        df = df[df.apply(row_contains_keyword, axis=1)]
-
-    total_records = len(df)
+        df = df[df.apply(lambda row: any(keyword_lower in str(row[col]).lower() for col in [
+            "網址", "房屋標題", "區域", "委託總價",
+            "鄰近市場", "鄰近學校", "生活圈",
+            "社區/建物", "環境特色"
+        ] if col in df.columns), axis=1)]
 
     # 排序
     ascending = sort_order == "asc"
     if sort_by in df.columns:
-        if df[sort_by].dtype != 'O':  # 非字串欄位轉為數字
-            df[sort_by] = pd.to_numeric(df[sort_by], errors='coerce')
+        df[sort_by] = pd.to_numeric(df[sort_by], errors='coerce')
         df = df.sort_values(by=sort_by, ascending=ascending)
-    else:
-        df["委託總價"] = pd.to_numeric(df["委託總價"], errors='coerce')
-        df = df.sort_values(by="委託總價", ascending=ascending)
+        
+    # 屋齡篩選
+    try:
+        if age_max:
+            df = df[df["屋齡"] <= float(age_max)]
+    except:
+        pass
+    
+    # 有車位篩選（根據「車位型式」欄位非空）
+    if selected_has_parking:
+        df = df[df["車位型式"].notnull() & (df["車位型式"].astype(str).str.strip() != "")]
+
+
 
     # 分頁
-    total_pages = math.ceil(total_records / per_page) if per_page else 1
+    per_page = 10
+    total_records = len(df)
+    total_pages = math.ceil(total_records / per_page)
     page = max(1, min(page, total_pages))
     page_data = df.iloc[(page - 1) * per_page: page * per_page].fillna("-").to_dict(orient="records")
 
     房型選項 = sorted(df_raw["房型"].dropna().unique()) if not df_raw.empty else []
+    slide_images = sorted([f for f in os.listdir(SLIDE_FOLDER) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+    featured_df = df_raw[df_raw.get("強銷", "否") == "是"]
+    featured_data = featured_df.head(8).fillna("-").to_dict(orient="records")
 
     return render_template(
         "index.html",
@@ -490,17 +464,24 @@ def index():
         room_max=room_max,
         price_min=price_min,
         price_max=price_max,
+        building_min=building_min,
+        building_max=building_max,
         keyword=keyword,
         sort_by=sort_by,
         sort_order=sort_order,
+        selected_has_elevator=selected_has_elevator,
         data=page_data,
         total_records=total_records,
         page=page,
         total_pages=total_pages,
-        featured_data=featured_data
+        featured_data=featured_data,
+        age_min=age_min,
+        age_max=age_max,
+        selected_has_parking=selected_has_parking
+
     )
-    
-    
+
+
 
 @app.route("/insights")
 def insights():
@@ -523,6 +504,7 @@ def rent():
     price_max = request.args.get('price_max')
     sort_by = request.args.get('sort_by', '')
 
+
     selected_has_balcony = request.args.get('has_balcony') == '1'
     selected_has_parking = request.args.get('has_parking') == '1'
     selected_has_water_cooler = request.args.get('has_water_cooler') == '1'
@@ -530,6 +512,8 @@ def rent():
     selected_has_sink = request.args.get('has_sink') == '1'
     selected_has_bath_separate = request.args.get('has_bath_separate') == '1'
     selected_has_washer_indep = request.args.get('has_washer_indep') == '1'
+    selected_has_short_term = request.args.get('has_short_term') == '1'
+    selected_has_elevator = request.args.get('has_elevator') == '1'
 
     def to_int(val, default):
         try:
@@ -581,6 +565,13 @@ def rent():
         if keyword:
             if keyword not in (row['地址'] or '') and keyword not in (row['備註'] or ''):
                 continue
+            
+        if selected_has_short_term and (not row['短租'] or '不可' in row['短租']):
+            continue
+        if selected_has_elevator and row['是否有電梯'] != '有':
+            continue
+
+
 
         try:
             房數 = int(row['格局'].split('房')[0])
@@ -651,7 +642,10 @@ def rent():
         room_max='' if room_max == 99 else room_max,
         price_min='' if price_min == 0 else price_min,
         price_max='' if price_max == 9999999 else price_max,
-        taichung_districts=sorted(list(taichung_districts))
+        taichung_districts=sorted(list(taichung_districts)),
+        selected_has_short_term=selected_has_short_term,
+        selected_has_elevator=selected_has_elevator
+
     )
 
 
