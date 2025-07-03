@@ -649,6 +649,7 @@ def rent():
     )
 
 
+
 @app.route('/admin/query', methods=['GET', 'POST'])
 def admin_query():
     result = None
