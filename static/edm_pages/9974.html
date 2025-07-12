@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>租房資訊 | Ellen帶你找家</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f7f3ef;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      position: relative;
+    }
+    /* Logo + 標題 */
+    .header-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .logo {
+      width: 120px;
+      display: block;
+    }
+    .header-title {
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #000;
+      flex-grow: 1;
+    }
+    /* carousel圖片 */
+    .carousel-inner img {
+      border-radius: 8px;
+      max-height: 400px;
+      object-fit: contain;
+      cursor: pointer;
+    }
+    .carousel {
+      margin-bottom: 16px;
+    }
+    .areas-address, .small-info, .rent, .other-info, .fee-info {
+      text-align: left;
+      margin-bottom: 12px;
+    }
+    .areas-address {
+      font-weight: 900;
+      font-size: 20px;
+      color: #000;
+    }
+    .small-info {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .rent {
+      color: #d32f2f;
+      font-weight: 900;
+      font-size: 32px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .rent-small {
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .equipment-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+    margin-bottom: 24px;
+  }
+
+  .equipment-item {
+    width: 14%;
+    min-width: 70px;
+    text-align: center;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    padding: 8px 4px;
+    color: #CABAA1;
+    font-weight: 700;
+    cursor: default;
+  }
+
+  .equipment-item img {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 6px;
+  }
+
+  @media (max-width: 600px) {
+    .equipment-item {
+      width: 20%;
+      min-width: 50px;
+    }
+  }
+
+
+    /* 按鈕區 */
+    .btn-bottom {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 30px;
+      margin-bottom: 10px;
+    }
+    .btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.9rem;
+      padding: 10px;
+      width: 30%;
+      text-decoration: none;
+      color: #fff;
+      border-radius: 6px;
+      user-select: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn img {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 6px;
+    }
+    .btn-booking {
+      background-color: #a0845c;
+      border: none;
+    }
+    .btn-booking:hover {
+      background-color: #8c6b4a;
+    }
+    .btn-line {
+      background-color: #00c300;
+      border: none;
+    }
+    .btn-line:hover {
+      background-color: #00a000;
+    }
+    .btn-similar {
+      background-color: #38a1db;
+      border: none;
+    }
+    .btn-similar:hover {
+      background-color: #2d89c7;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Logo + 標題 -->
+    <div class="header-bar">
+      <img src="../images/logo/logo.png" alt="logo" class="logo"/>
+      <div class="header-title">租房資訊</div>
+    </div>
+
+    <!-- 圖片 carousel + glightbox -->
+    
+    <div id="houseCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        
+        <div class="carousel-item active">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/0108@E34DF877-F1E4-45B7-AABB-B7A60D11047F@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 1">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/0108@E34DF877-F1E4-45B7-AABB-B7A60D11047F@M.jpeg" class="d-block w-100" alt="圖片1" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/8373@361B41E4-DFD6-4359-B69D-15A1D69ADC95@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 2">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/8373@361B41E4-DFD6-4359-B69D-15A1D69ADC95@M.jpeg" class="d-block w-100" alt="圖片2" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/7981@F5589583-6E87-48BC-823A-B200C4D4B2EF@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 3">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/7981@F5589583-6E87-48BC-823A-B200C4D4B2EF@M.jpeg" class="d-block w-100" alt="圖片3" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/1155@DE439827-E65A-407F-BDAF-FF4AA9104A0F@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 4">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/1155@DE439827-E65A-407F-BDAF-FF4AA9104A0F@M.jpeg" class="d-block w-100" alt="圖片4" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/8515@4D9784A9-F90A-4DC8-B29B-5B31820DC2EE@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 5">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/8515@4D9784A9-F90A-4DC8-B29B-5B31820DC2EE@M.jpeg" class="d-block w-100" alt="圖片5" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/7436@1A6DF4B2-D8CD-4C9D-9E43-74D942FEC7FD@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 6">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/7436@1A6DF4B2-D8CD-4C9D-9E43-74D942FEC7FD@M.jpeg" class="d-block w-100" alt="圖片6" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/5757@A68CFD73-ECED-46D1-B69C-7D976303A4E8@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 7">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/5757@A68CFD73-ECED-46D1-B69C-7D976303A4E8@M.jpeg" class="d-block w-100" alt="圖片7" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/1820@496833A1-E747-4A3F-84BB-C72B2030F8E5@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 8">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/1820@496833A1-E747-4A3F-84BB-C72B2030F8E5@M.jpeg" class="d-block w-100" alt="圖片8" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/4295@2364E144-6F56-49C3-ACE2-3230F490D2CD@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 9">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/4295@2364E144-6F56-49C3-ACE2-3230F490D2CD@M.jpeg" class="d-block w-100" alt="圖片9" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/9692@D8E727AB-EA8C-4181-98F7-04200E1CB247@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 10">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/9692@D8E727AB-EA8C-4181-98F7-04200E1CB247@M.jpeg" class="d-block w-100" alt="圖片10" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/6215@3B60A3C0-7ACB-402F-AE07-2CE4944C15FC@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 11">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/6215@3B60A3C0-7ACB-402F-AE07-2CE4944C15FC@M.jpeg" class="d-block w-100" alt="圖片11" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/5026@A611BD73-03DC-4C59-85CB-11E25E303991@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 12">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/5026@A611BD73-03DC-4C59-85CB-11E25E303991@M.jpeg" class="d-block w-100" alt="圖片12" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/0631@E4DEF169-8099-4129-88DE-17AC9A49562A@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 13">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/0631@E4DEF169-8099-4129-88DE-17AC9A49562A@M.jpeg" class="d-block w-100" alt="圖片13" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/1296@C566CED6-53A8-447E-90CF-D6D3B0B4DF8C@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 14">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/1296@C566CED6-53A8-447E-90CF-D6D3B0B4DF8C@M.jpeg" class="d-block w-100" alt="圖片14" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/2899@C051A1EB-B2E2-4101-B46D-13EF276D4FBA@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 15">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/2899@C051A1EB-B2E2-4101-B46D-13EF276D4FBA@M.jpeg" class="d-block w-100" alt="圖片15" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/6073@93B393B1-3347-45D1-AABA-BE3F5B02F6AF@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 16">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/6073@93B393B1-3347-45D1-AABA-BE3F5B02F6AF@M.jpeg" class="d-block w-100" alt="圖片16" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/0294@1C0F8B48-48ED-4600-A79E-B36AFDB08155@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 17">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/0294@1C0F8B48-48ED-4600-A79E-B36AFDB08155@M.jpeg" class="d-block w-100" alt="圖片17" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/9584@F3B801BB-AE62-4282-A803-F64E4BD74985@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 18">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/9584@F3B801BB-AE62-4282-A803-F64E4BD74985@M.jpeg" class="d-block w-100" alt="圖片18" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/2452@57FBCCCE-69BE-4B82-9DBE-F9680D0D22D8@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 19">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/2452@57FBCCCE-69BE-4B82-9DBE-F9680D0D22D8@M.jpeg" class="d-block w-100" alt="圖片19" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/0359@603E1856-D698-46D8-9312-427B76AA79B3@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 20">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/0359@603E1856-D698-46D8-9312-427B76AA79B3@M.jpeg" class="d-block w-100" alt="圖片20" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/8962@B745FC28-3CA9-4BDA-84D6-E934955E9204@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 21">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/8962@B745FC28-3CA9-4BDA-84D6-E934955E9204@M.jpeg" class="d-block w-100" alt="圖片21" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/5266@D17C301B-5E22-48EE-88B2-014B98E7009D@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 22">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/5266@D17C301B-5E22-48EE-88B2-014B98E7009D@M.jpeg" class="d-block w-100" alt="圖片22" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250708170309153570/2279@2D28C589-F5D8-4D35-A9AF-0E5AA68E1F44@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 23">
+            <img src="https://toprent.tw/upload/house_photo/20250708170309153570/2279@2D28C589-F5D8-4D35-A9AF-0E5AA68E1F44@M.jpeg" class="d-block w-100" alt="圖片23" />
+          </a>
+        </div>
+        
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#houseCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">上一張</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#houseCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">下一張</span>
+      </button>
+    </div>
+    
+
+    <!-- 基本資訊 -->
+    <div class="areas-address">北屯區 平德路</div>
+    <div class="small-info">
+      
+      店面 | 1房0廳1衛0陽台 | 1F | 3F | 透天 | 9974
+
+    </div>
+
+    
+    <div class="rent">
+      21000 <span class="rent-small">元/月</span>
+    </div>
+    
+
+    
+    
+    
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+    
+    <div class="other-info">
+      房號：513 | 子母車：無 | 飲水機：無 | 可寵物：不可寵 | 可抽菸：可；室外 | 短租：不可
+    </div>
+    
+
+    
+    
+    
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+    
+    <div class="fee-info">
+      水費：包水 | 電費：5.5元/度 | 管理費：無
+      
+    </div>
+    
+
+    <!-- 設備圖示 -->
+    <div class="equipment-container">
+      
+      
+      
+        
+      
+        
+          <div class="equipment-item present">
+            <img src="../images/icon/冰箱.png" alt="冰箱圖示" />
+            <div>冰箱</div>
+          </div>
+        
+      
+        
+          <div class="equipment-item present">
+            <img src="../images/icon/冷氣.png" alt="冷氣圖示" />
+            <div>冷氣</div>
+          </div>
+        
+      
+        
+      
+        
+          <div class="equipment-item present">
+            <img src="../images/icon/熱水器.png" alt="熱水器圖示" />
+            <div>熱水器</div>
+          </div>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+
+
+      <!-- 按鈕 -->
+  <div class="btn-bottom">
+    <a href="tel:0909663034" class="btn btn-booking">
+      <img src="../images/icon/立即預約.png" alt="立即預約" />
+      立即預約
+    </a>
+
+    <a href="https://line.me/ti/p/A1CNJf_2-L" target="_blank" class="btn btn-line">
+      <img src="../images/icon/Line.png" alt="LINE詢問" />
+      LINE 詢問
+    </a>
+
+    <!-- 猜你喜歡跳轉回 rent.html 並帶入參數 -->
+    <a href="/rent?areas=%E5%8C%97%E5%B1%AF%E5%8D%80&price_min=20500&price_max=23000" class="btn btn-similar">
+      <img src="../images/icon/猜你喜歡.png" alt="猜你喜歡" />
+      猜你喜歡
+    </a>
+
+
+  </div>
+
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+  <script>
+    const lightbox = GLightbox({
+      selector: '.glightbox',
+    });
+  </script>
+</body>
+</html>

@@ -171,19 +171,68 @@
 
     <!-- 圖片 carousel + glightbox -->
     
-    <div class="text-center text-muted" style="margin-top: 60px;">尚無圖片</div>
+    <div id="houseCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        
+        <div class="carousel-item active">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/0748@LINE_ALBUM_平德街60號_250519_30@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 1">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/0748@LINE_ALBUM_平德街60號_250519_30@M.jpeg" class="d-block w-100" alt="圖片1" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/0366@LINE_ALBUM_平德街60號_250519_28@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 2">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/0366@LINE_ALBUM_平德街60號_250519_28@M.jpeg" class="d-block w-100" alt="圖片2" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/1795@LINE_ALBUM_平德街60號_250519_23@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 3">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/1795@LINE_ALBUM_平德街60號_250519_23@M.jpeg" class="d-block w-100" alt="圖片3" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/9319@LINE_ALBUM_平德街60號_250519_25@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 4">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/9319@LINE_ALBUM_平德街60號_250519_25@M.jpeg" class="d-block w-100" alt="圖片4" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/6429@LINE_ALBUM_平德街60號_250519_26@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 5">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/6429@LINE_ALBUM_平德街60號_250519_26@M.jpeg" class="d-block w-100" alt="圖片5" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250519205706987274/9352@LINE_ALBUM_平德街60號_250519_22@M.jpeg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 6">
+            <img src="https://toprent.tw/upload/house_photo/20250519205706987274/9352@LINE_ALBUM_平德街60號_250519_22@M.jpeg" class="d-block w-100" alt="圖片6" />
+          </a>
+        </div>
+        
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#houseCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">上一張</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#houseCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">下一張</span>
+      </button>
+    </div>
     
 
     <!-- 基本資訊 -->
     <div class="areas-address">北屯區 平德路</div>
     <div class="small-info">
       
-      獨立套房 | 1房0廳1衛0陽台 | 5F | 6F | 公寓
+      獨立套房 | 1房0廳1衛0陽台 | 5F | 6F | 公寓 | 6867
+
     </div>
 
     
     <div class="rent">
-      10000 <span class="rent-small">元/月</span>
+      9000 <span class="rent-small">元/月</span>
     </div>
     
 
@@ -217,7 +266,7 @@
     
     
     <div class="other-info">
-      房號：6A | 子母車：有 | 飲水機：有 | 可寵物：可貓 | 可抽菸：可;室外 | 短租：不可
+      房號：6A | 子母車：有 | 飲水機：有 | 可寵物：可貓 | 可抽菸：可；室外 | 短租：不可
     </div>
     
 
@@ -225,6 +274,8 @@
     
     
     
+      
+        
       
     
       
@@ -237,7 +288,7 @@
     
     
     <div class="fee-info">
-      電費：電6元/度 | 管理費：無
+      水費：包水 | 電費：電6元/度 | 管理費：無
       
         | 獨洗
       
@@ -320,7 +371,7 @@
     </a>
 
     <!-- 猜你喜歡跳轉回 rent.html 並帶入參數 -->
-    <a href="/rent?areas=%E5%8C%97%E5%B1%AF%E5%8D%80&pets=2&price_min=9500&price_max=12000" class="btn btn-similar">
+    <a href="/rent?areas=%E5%8C%97%E5%B1%AF%E5%8D%80&pets=2&price_min=8500&price_max=11000" class="btn btn-similar">
       <img src="../images/icon/猜你喜歡.png" alt="猜你喜歡" />
       猜你喜歡
     </a>

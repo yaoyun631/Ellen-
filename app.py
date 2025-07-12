@@ -24,7 +24,7 @@ def get_existing_images(house_id):
             response = requests.head(url, timeout=2)
             if response.status_code == 200:
                 valid_images.append(url)
-        except requests.RequestException:
+        except requests.ReqㄏuestException:
             continue
     return valid_images
 
@@ -545,7 +545,7 @@ def rent():
             continue
         if selected_house_types and row['房屋類型'] not in selected_house_types:
             continue
-        if selected_pets and row['是否可寵物'] in ['不可']:
+        if selected_pets and row['是否可寵物'] in ['不可寵']:
             continue
         if selected_has_balcony and row['陽台'] != '有':
             continue
