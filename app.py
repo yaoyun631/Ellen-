@@ -482,6 +482,9 @@ def index():
     )
 
 
+@app.route('/googlec61da90b3857cf74.html')
+def google_verify():
+    return ('google-site-verification: googlec61da90b3857cf74.html')
 
 @app.route("/insights")
 def insights():
