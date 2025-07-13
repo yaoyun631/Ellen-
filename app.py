@@ -488,7 +488,7 @@ def google_verify():
 
 @app.route("/sitemap.xml")
 def sitemap():
-    return send_from_directory("static", "sitemap.xml")
+    return send_from_directory("static", "sitemap.xml", mimetype="application/xml")
 
 
 @app.route("/insights")
