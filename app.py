@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file,jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file,jsonify, send_from_directory
 import pandas as pd
 import os
 import re
@@ -24,7 +24,7 @@ def get_existing_images(house_id):
             response = requests.head(url, timeout=2)
             if response.status_code == 200:
                 valid_images.append(url)
-        except requests.ReqㄏuestException:
+        except requests.RequestException:
             continue
     return valid_images
 
@@ -481,10 +481,15 @@ def index():
 
     )
 
-
+#google SEO驗證
 @app.route('/googlec61da90b3857cf74.html')
 def google_verify():
     return ('google-site-verification: googlec61da90b3857cf74.html')
+
+@app.route("/sitemap.xml")
+def sitemap():
+    return send_from_directory("static", "sitemap.xml")
+
 
 @app.route("/insights")
 def insights():
