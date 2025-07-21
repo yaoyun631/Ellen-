@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  body { background-color: #fdfaf5; }
+  h2 { color: #8a6e45; }
+  .input-group { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;}
+  label { font-size: 16px; color: #444; white-space: nowrap;}
+  input, select {
+    padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 16px; background: #fff8f0;
+  }
+  input[type="number"], input[type="text"] { width: 120px; }
+  input[type="checkbox"] { transform: scale(1.2); margin-right: 4px; }
+  button {
+    background-color: #CABAA1; border: none; color: white;
+    padding: 10px 20px; font-size: 16px; border-radius: 8px;
+    cursor: pointer; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    margin-top: 10px;
+  }
+  button:hover { background-color: #b5a489; }
+  .table-wrapper { overflow-x: auto; margin-top: 20px; }
+  table { border-collapse: collapse; width: 100%; min-width: 700px; background-color: white; }
+  th, td { border: 1px solid #ddd; padding: 10px 8px; text-align: center; }
+  th { background-color: #CABAA1; color: white; }
+  tr:nth-child(even) { background-color: #f9f5f0; }
+  tr:hover { background-color: #f0ece6; }
+
+  .modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  .modal-content {
+    background: #fff; padding: 20px; border-radius: 10px;
+    width: 90%; max-width: 550px;
+  }
+  .modal-content h3 { margin-top: 0; color: #8a6e45; }
+  .modal-content p { margin: 8px 0; }
+
+  .fee-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 10px;
+    margin: 10px 0;
+  }
+  .fee-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background: #fffdf8;
+  }
+  .fee-item-title {
+    font-weight: bold;
+    color: #5e4b2d;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .fee-item-note {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.4;
+  }
+
+  /* 展開細節按鈕 */
+  #feeDetailsToggle {
+    margin-top: 10px;
+    cursor: pointer;
+    color: #8a6e45;
+    font-weight: bold;
+  }
+  #feeDetailsContent {
+    display: none;
+  }
+
+  
+</style>
+
+<h2>貸款月付款試算工具</h2>
+
+<div class="input-group">
+  <label>房屋評定現值（萬）：<input type="number" id="houseValue" inputmode="numeric" placeholder="可不填"></label>
+  <label>契稅類別：
+    <select id="contractTaxType">
+      <option value="0.06">買賣 / 贈與 / 佔有 6%</option>
+      <option value="0.04">典權 4%</option>
+      <option value="0.02">交換 / 分割 2%</option>
+    </select>
+  </label>
+</div>
+
+<div class="input-group">
+  <label>最低總價(萬)：<input type="number" id="minPrice" value="800" inputmode="numeric"></label>
+  <label>最高總價(萬)：<input type="number" id="maxPrice" value="1000" inputmode="numeric"></label>
+  <label>級距：
+    <select id="step">
+      <option value="5">5萬</option>
+      <option value="10" selected>10萬</option>
+      <option value="50">50萬</option>
+    </select>
+  </label>
+</div>
+
+<div class="input-group">
+  <label>貸款成數（用 , 分隔）：<input type="text" id="ratios" value="75,80" inputmode="numeric" placeholder="例如：75,80"></label>
+  <label>年利率（%）：<input type="number" step="0.01" id="rate" value="2.2" inputmode="decimal"></label>
+</div>
+
+<div class="input-group">
+  <label>年限：</label>
+  <label><input type="checkbox" class="years" value="20" >20年</label>
+  <label><input type="checkbox" class="years" value="30" checked>30年</label>
+  <label><input type="checkbox" class="years" value="40" checked>40年</label>
+</div>
+
+<div class="input-group">
+  <label><input type="checkbox" id="gracePeriod"> 寬限期月繳（只算利息）</label>
+</div>
+
+<button onclick="calculate()">產生試算表</button>
+
+<div class="table-wrapper">
+  <table id="resultTable"></table>
+</div>
+
+<!-- 彈出小卡 -->
+<div class="modal" id="infoModal" onclick="this.style.display='none'">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">費用試算</h3>
+    <p id="modalSelfPay" style="font-weight: bold;"></p>
+
+    <div id="feeDetailsToggle" onclick="toggleFeeDetails()">▶ 相關費用細節（點擊展開/收合）</div>
+    <div id="feeDetailsContent" class="fee-grid"></div>
+
+    <p id="modalFeesTotal" style="font-weight: bold;"></p>
+    <p id="modalCostTotal" style="font-weight: bold; color: #8a6e45;"></p>
+    <p style="text-align: right;"><button onclick="document.getElementById('infoModal').style.display='none'">關閉</button></p>
+  </div>
+</div>
+
+<script>
+function calculate() {
+  const min = parseInt(document.getElementById('minPrice').value);
+  const max = parseInt(document.getElementById('maxPrice').value);
+  const step = parseInt(document.getElementById('step').value);
+  const ratiosInput = document.getElementById('ratios').value;
+  if (!ratiosInput.trim()) {
+    alert("請輸入貸款成數");
+    return;
+  }
+  const ratios = ratiosInput.split(',').map(r => parseFloat(r.trim()) / 100).filter(r => !isNaN(r) && r > 0 && r <= 1);
+  if (ratios.length === 0) {
+    alert("貸款成數格式錯誤，請輸入有效的百分比(如 75,80)");
+    return;
+  }
+  const rate = parseFloat(document.getElementById('rate').value) / 100;
+  const years = Array.from(document.querySelectorAll('.years:checked')).map(c => parseInt(c.value));
+  const showGrace = document.getElementById('gracePeriod').checked;
+  const table = document.getElementById('resultTable');
+  table.innerHTML = "";
+
+  if(years.length === 0) {
+    alert("請至少勾選一個年限");
+    return;
+  }
+
+  let header = "<tr><th>總價</th><th>貸款金額</th>";
+  years.forEach(y => { header += `<th>${y}年月付</th>`; });
+  if(showGrace){
+    header += "<th>寬限期月繳</th>";
+  }
+  header += "</tr>";
+  table.innerHTML += header;
+
+  for (let price = min; price <= max; price += step) {
+    ratios.forEach(r => {
+      const loanAmt = price * 10000 * r;
+      const loanStr = `${Math.round(loanAmt/10000)}萬（${Math.round(r*100)}%）`;
+      let row = `<tr>
+        <td><a href="#" onclick="showInfo(${price}, ${r});return false;">${price}萬</a></td>
+        <td>${loanStr}</td>`;
+      years.forEach(y => {
+        const months = y * 12, mRate = rate/12;
+        const mPay = (loanAmt*mRate)/(1 - Math.pow(1+mRate, -months));
+        row += `<td>${Math.round(mPay).toLocaleString()}</td>`;
+      });
+      if(showGrace){
+        // 寬限期只算利息 = 貸款金額 * 月利率
+        const gracePay = loanAmt * (rate/12);
+        row += `<td>${Math.round(gracePay).toLocaleString()}</td>`;
+      }
+      row += "</tr>";
+      table.innerHTML += row;
+    });
+  }
+}
+
+function showInfo(price, ratio) {
+  const houseVal = parseFloat(document.getElementById('houseValue').value || 0) * 10000;
+  const taxRate = parseFloat(document.getElementById('contractTaxType').value);
+  const loanAmt = price * 10000 * ratio;
+  const selfPay = price * 10000 * (1 - ratio);
+
+  const contractTax = houseVal > 0 ? houseVal * taxRate : null;
+  const settingFee = loanAmt * 0.001;
+  const regFee = 6000;
+  const insurance = 2000;
+  const openFee = 4000;
+  const actualReg = 1500;
+  const docFee = 1000 + 12000 + 5000;
+  const warranty = price * 10000 * 0.003;
+  const brokerFee = price * 10000 * 0.02;
+
+  const fees = [];
+
+  if (contractTax !== null) {
+    fees.push({ name: `契稅 (${(taxRate*100).toFixed(0)}%)`, value: contractTax });
+  } else {
+    fees.push({ name: "契稅", value: "", note: "未提供評定現值" });
+  }
+
+  fees.push(
+    { name: "銀行設定規費 (0.1%)", value: settingFee },
+    { name: "買賣規費", value: regFee, note: "包含印花稅、謄本、買賣地政規費等（實支實付）" },
+    { name: "火險+地震險", value: insurance, note: "每年保一次" },
+    { name: "銀行開辦費", value: openFee, note: "(約$3000~5$000)" },
+    { name: "實價登錄", value: actualReg },
+    { name: "代書費", value: docFee, note: "簽約費$1000、買賣$12000、貸款設定$5000"  },
+    { name: "履保費 (0.3%)", value: warranty },
+    { name: "仲介服務費 (2%)", value: brokerFee },
+    { name: "水、電、瓦斯、房屋稅、地價稅、管理費等", value: 0, note: "皆分算至交屋當日，由買賣雙方互相找補" }
+  );
+
+  const loanPercent = (ratio * 10);
+  const loanStr = Number.isInteger(loanPercent) ? loanPercent.toString() : loanPercent.toFixed(1);
+  document.getElementById("modalTitle").innerText = `總價${price}萬 貸款${loanStr}成 費用試算`;
+  document.getElementById("modalSelfPay").innerText = `自備款：約 ${Math.round(selfPay).toLocaleString()} 元`;
+
+  const list = document.getElementById("feeDetailsContent");
+  list.innerHTML = "";
+  fees.forEach(f => {
+    const div = document.createElement("div");
+    div.className = "fee-item";
+
+    const title = document.createElement("div");
+    title.className = "fee-item-title";
+    const name = document.createElement("span");
+    name.innerText = f.name;
+    const value = document.createElement("span");
+    value.innerText = f.value ? `${Math.round(f.value).toLocaleString()} 元` : "";
+    title.appendChild(name);
+    title.appendChild(value);
+    div.appendChild(title);
+
+    if (f.note) {
+      const note = document.createElement("div");
+      note.className = "fee-item-note";
+      note.innerText = f.note;
+      div.appendChild(note);
+    }
+
+    list.appendChild(div);
+  });
+
+  const feesTotal = fees.reduce((sum, f) => sum + (f.value || 0), 0);
+  document.getElementById("modalFeesTotal").innerText =
+    `費用總計：約 ${Math.round(feesTotal).toLocaleString()} 元`;
+
+  const totalCost = selfPay + feesTotal;
+  document.getElementById("modalCostTotal").innerText =
+    `✅ 總負擔費用：約 ${Math.round(totalCost).toLocaleString()} 元`;
+
+  // 預設展開細節收合
+  document.getElementById("feeDetailsContent").style.display = "none";
+  document.getElementById("feeDetailsToggle").innerText = "▶ 相關費用細節（點擊展開/收合）";
+
+  document.getElementById("infoModal").style.display = "flex";
+}
+
+function toggleFeeDetails() {
+  const content = document.getElementById("feeDetailsContent");
+  const toggle = document.getElementById("feeDetailsToggle");
+  if (content.style.display === "none") {
+    content.style.display = "grid";
+    toggle.innerText = "▼ 相關費用細節（點擊展開/收合）";
+  } else {
+    content.style.display = "none";
+    toggle.innerText = "▶ 相關費用細節（點擊展開/收合）";
+  }
+}
+</script>
+{% endblock %}

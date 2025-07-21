@@ -495,7 +495,9 @@ def sitemap():
 def insights():
     return render_template("insights.html")
 
-
+@app.route('/loan', endpoint='loan')
+def loan_page():
+    return render_template("loan.html")
 
 
 @app.route('/rent')
