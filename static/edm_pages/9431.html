@@ -171,7 +171,43 @@
 
     <!-- 圖片 carousel + glightbox -->
     
-    <div class="text-center text-muted" style="margin-top: 60px;">尚無圖片</div>
+    <div id="houseCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        
+        <div class="carousel-item active">
+          <a href="https://toprent.tw/upload/house_photo/20250701110015239700/5210@IMG_8936@M.jpg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 1">
+            <img src="https://toprent.tw/upload/house_photo/20250701110015239700/5210@IMG_8936@M.jpg" class="d-block w-100" alt="圖片1" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250701110015239700/6063@IMG_8943@M.jpg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 2">
+            <img src="https://toprent.tw/upload/house_photo/20250701110015239700/6063@IMG_8943@M.jpg" class="d-block w-100" alt="圖片2" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250701110015239700/7285@IMG_8938@M.jpg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 3">
+            <img src="https://toprent.tw/upload/house_photo/20250701110015239700/7285@IMG_8938@M.jpg" class="d-block w-100" alt="圖片3" />
+          </a>
+        </div>
+        
+        <div class="carousel-item ">
+          <a href="https://toprent.tw/upload/house_photo/20250701110015239700/4287@IMG_8941@M.jpg" class="glightbox" data-gallery="house-gallery" data-type="image" data-desc="房屋圖片 4">
+            <img src="https://toprent.tw/upload/house_photo/20250701110015239700/4287@IMG_8941@M.jpg" class="d-block w-100" alt="圖片4" />
+          </a>
+        </div>
+        
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#houseCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">上一張</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#houseCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">下一張</span>
+      </button>
+    </div>
     
 
     <!-- 基本資訊 -->
@@ -184,7 +220,7 @@
 
     
     <div class="rent">
-      6200 <span class="rent-small">元/月</span>
+      6300 <span class="rent-small">元/月</span>
     </div>
     
 
@@ -240,7 +276,7 @@
     
     
     <div class="fee-info">
-      水費：100元/人元 | 電費：電5元夏季5-10月5.5元 元/度 | 管理費：無
+      水費：100元/人元 | 電費：電5元 夏季5-10月5.5元 元/度 | 管理費：無
       
     </div>
     
@@ -290,7 +326,17 @@
         
       
         
+          <div class="equipment-item present">
+            <img src="../images/icon/沙發.png" alt="沙發圖示" />
+            <div>沙發</div>
+          </div>
+        
       
+        
+          <div class="equipment-item present">
+            <img src="../images/icon/書桌.png" alt="書桌圖示" />
+            <div>書桌</div>
+          </div>
         
       
         
@@ -311,7 +357,7 @@
     </a>
 
     <!-- 猜你喜歡跳轉回 rent.html 並帶入參數 -->
-    <a href="/rent?areas=%E5%8C%97%E5%B1%AF%E5%8D%80&pets=2&price_min=5700&price_max=8200" class="btn btn-similar">
+    <a href="/rent?areas=%E5%8C%97%E5%B1%AF%E5%8D%80&pets=2&price_min=5800&price_max=8300" class="btn btn-similar">
       <img src="../images/icon/猜你喜歡.png" alt="猜你喜歡" />
       猜你喜歡
     </a>
