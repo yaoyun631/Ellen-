@@ -101,8 +101,21 @@
   </label>
 </div>
 
+<!-- 貸款成數改為勾選框 -->
 <div class="input-group">
-  <label>貸款成數（用 , 分隔）：<input type="text" id="ratios" value="75,80" inputmode="numeric" placeholder="例如：75,80"></label>
+  <label style="white-space: nowrap;">貸款成數：</label>
+  <label><input type="checkbox" class="loanRatio" value="40">4成</label>
+  <label><input type="checkbox" class="loanRatio" value="45">45成</label>
+  <label><input type="checkbox" class="loanRatio" value="50">5成</label>
+  <label><input type="checkbox" class="loanRatio" value="55">55成</label>
+  <label><input type="checkbox" class="loanRatio" value="60">6成</label>
+  <label><input type="checkbox" class="loanRatio" value="65">65成</label>
+  <label><input type="checkbox" class="loanRatio" value="70">7成</label>
+  <label><input type="checkbox" class="loanRatio" value="75" checked>75成</label>
+  <label><input type="checkbox" class="loanRatio" value="80" checked>8成</label>
+</div>
+
+<div class="input-group">
   <label>年利率（%）：<input type="number" step="0.01" id="rate" value="2.2" inputmode="decimal"></label>
 </div>
 
@@ -143,16 +156,14 @@ function calculate() {
   const min = parseInt(document.getElementById('minPrice').value);
   const max = parseInt(document.getElementById('maxPrice').value);
   const step = parseInt(document.getElementById('step').value);
-  const ratiosInput = document.getElementById('ratios').value;
-  if (!ratiosInput.trim()) {
-    alert("請輸入貸款成數");
+
+  const ratioCheckboxes = document.querySelectorAll('.loanRatio:checked');
+  if (ratioCheckboxes.length === 0) {
+    alert("請至少勾選一個貸款成數");
     return;
   }
-  const ratios = ratiosInput.split(',').map(r => parseFloat(r.trim()) / 100).filter(r => !isNaN(r) && r > 0 && r <= 1);
-  if (ratios.length === 0) {
-    alert("貸款成數格式錯誤，請輸入有效的百分比(如 75,80)");
-    return;
-  }
+  const ratios = Array.from(ratioCheckboxes).map(cb => parseFloat(cb.value) / 100);
+
   const rate = parseFloat(document.getElementById('rate').value) / 100;
   const years = Array.from(document.querySelectorAll('.years:checked')).map(c => parseInt(c.value));
   const showGrace = document.getElementById('gracePeriod').checked;

@@ -14,6 +14,64 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 import sqlite3
 import requests
+import urllib.parse
+
+
+excel_path = r"C:\Users\ellen\Desktop\website_project\data\完整型錄資料.xlsx"
+output_json = r"C:\Users\ellen\Desktop\website_project\static\properties.json"
+
+df = pd.read_excel(excel_path)
+
+def extract_coords(url):
+    try:
+        match = re.search(r'google=([\d.]+)\s*,\s*([\d.]+)', str(url))
+        if match:
+            return float(match.group(1)), float(match.group(2))
+    except:
+        pass
+    return None, None
+
+def extract_edm_id(edm_url):
+    try:
+        parsed = urllib.parse.urlparse(edm_url)
+        query = urllib.parse.parse_qs(parsed.query)
+        no_list = query.get('No')
+        if no_list:
+            return no_list[0]
+    except:
+        pass
+    return ''
+
+properties = []
+
+for _, row in df.iterrows():
+    lat, lng = extract_coords(row.get('地圖連結', ''))
+    edm_url = str(row.get('網址', '')).strip()
+    edm_id = extract_edm_id(edm_url)
+    
+        # 提取區域（只取“xx區”）
+    area_full = str(row['區域'])
+    area = re.search(r'([\u4e00-\u9fa5]{1,4}區)', area_full)
+    area = area.group(1) if area else area_full
+
+    if lat is not None and lng is not None:
+        properties.append({
+            "name": str(row.get('房屋標題', '')).strip(),          # 用 標題 當 name
+            "price": str(row.get('委託總價', '')).strip(),
+            "area": area,
+            "type_status": str(row.get('類型/現況', '')).strip(),
+            "layout": str(row.get('房/廳/衛', '')).strip(),
+            "age": str(row.get('屋齡', '')).strip(),
+            "lat": lat,
+            "lng": lng,
+            "edm_id": edm_id
+        })
+
+with open(output_json, 'w', encoding='utf-8') as f:
+    json.dump(properties, f, ensure_ascii=False, indent=2)
+
+print(f"✅ JSON 已生成：{output_json}")
+
 
 def get_existing_images(house_id):
     base_url = f"https://hq.houseol.com.tw/images/pictures/H229{house_id}"
@@ -1119,7 +1177,9 @@ def admin_rent_delete(filename):
     return redirect(url_for('admin_rent_upload'))
 
 
-
+@app.route('/sale_map')
+def sale_map():
+    return render_template('sale_map.html')
 
 
 if __name__ == "__main__":
