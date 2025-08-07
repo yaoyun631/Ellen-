@@ -17,8 +17,14 @@ import requests
 import urllib.parse
 
 
-excel_path = r"C:\Users\ellen\Desktop\website_project\data\完整型錄資料.xlsx"
-output_json = r"C:\Users\ellen\Desktop\website_project\static\properties.json"
+# 取得目前這個 Python 檔案所在資料夾的路徑
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Excel 檔案的相對路徑
+excel_path = os.path.join(BASE_DIR, 'data', '完整型錄資料.xlsx')
+
+# 輸出的 JSON 路徑（放在 static 資料夾內）
+output_json = os.path.join(BASE_DIR, 'static', 'properties.json')
 
 df = pd.read_excel(excel_path)
 
