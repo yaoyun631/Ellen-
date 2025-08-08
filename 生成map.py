@@ -5,7 +5,7 @@ import json
 
 # 專案根目錄
 BASE_DIR = "./"
-excel_path = os.path.join(BASE_DIR, 'data', '完整型錄資料.xlsx')
+excel_path = os.path.join(BASE_DIR, 'data/sale', '完整型錄資料.xlsx')
 output_json = os.path.join(BASE_DIR, 'static', 'properties.json')
 
 # 讀取 Excel
