@@ -4,22 +4,11 @@
   <meta charset="UTF-8" />
   <title>互動地圖找房 - 篩選版</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-    crossorigin=""
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
-    html,
-    body {
+    html, body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -41,8 +30,7 @@
       font-weight: bold;
       margin-right: 6px;
     }
-    select,
-    input[type="number"] {
+    select, input[type="number"] {
       padding: 4px 6px;
       font-size: 14px;
     }
@@ -53,7 +41,7 @@
     }
     #map {
       position: absolute;
-      top: 58px; /* filters height + margin */
+      top: 58px;
       bottom: 0;
       left: 0;
       right: 0;
@@ -70,7 +58,7 @@
     }
     #countDisplay {
       position: absolute;
-      top: 58px; /* below filters */
+      top: 58px;
       left: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 6px 12px;
@@ -82,222 +70,221 @@
       user-select: none;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
-
   </style>
 </head>
 <body>
 
-
-  <div id="filters">
-    <div>
-      <label for="areaSelect">區域:</label>
-      <select id="areaSelect"><option value="">全部</option></select>
-    </div>
-    <div>
-      <label for="typeSelect">房型:</label>
-      <select id="typeSelect"><option value="">全部</option></select>
-    </div>
-    <div>
-      <label for="layoutSelect">格局:</label>
-      <select id="layoutSelect"><option value="">全部</option></select>
-    </div>
-    <div>
-      <label for="ageSelect">屋齡:</label>
-      <select id="ageSelect">
-        <option value="">不限</option>
-        <option value="5">5年以內</option>
-        <option value="10">10年以內</option>
-        <option value="20">20年以內</option>
-      </select>
-    </div>
-    <div>
-      <label for="minPrice">最低總價 (萬):</label>
-      <input type="number" id="minPrice" min="0" placeholder="不限" />
-    </div>
-    <div>
-      <label for="maxPrice">最高總價 (萬):</label>
-      <input type="number" id="maxPrice" min="0" placeholder="不限" />
-    </div>
-    <div><button id="applyBtn">確認篩選</button></div>
-    <div><button id="resetBtn">重設篩選</button></div>
+<div id="filters">
+  <div>
+    <label for="areaSelect">區域:</label>
+    <select id="areaSelect"><option value="">全部</option></select>
   </div>
+  <div>
+    <label for="typeSelect">房型:</label>
+    <select id="typeSelect"><option value="">全部</option></select>
+  </div>
+  <div>
+    <label for="layoutSelect">格局:</label>
+    <select id="layoutSelect"><option value="">全部</option></select>
+  </div>
+  <div>
+    <label for="ageSelect">屋齡:</label>
+    <select id="ageSelect">
+      <option value="">不限</option>
+      <option value="5">5年以內</option>
+      <option value="10">10年以內</option>
+      <option value="20">20年以內</option>
+    </select>
+  </div>
+  <div>
+    <label for="minPrice">最低總價 (萬):</label>
+    <input type="number" id="minPrice" min="0" placeholder="不限" />
+  </div>
+  <div>
+    <label for="maxPrice">最高總價 (萬):</label>
+    <input type="number" id="maxPrice" min="0" placeholder="不限" />
+  </div>
+  <div><button id="applyBtn">確認篩選</button></div>
+  <div><button id="resetBtn">重設篩選</button></div>
+</div>
 
-  <div id="countDisplay">物件數: 0</div>
-  <div id="map"></div>
+<div id="countDisplay">物件數: 0</div>
+<div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" crossorigin=""></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script>
-    let properties = [];
-    let markers = [];
-    let markerClusterGroup;
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  let properties = [];
+  let markers = [];
+  let markerClusterGroup;
 
-    const defaultLatLng = [24.2479, 120.5457];
-    const defaultZoom = 13;
+  const defaultLatLng = [24.2479, 120.5457];
+  const defaultZoom = 13;
 
-    const map = L.map("map").setView(defaultLatLng, defaultZoom);
+  const map = L.map("map").setView(defaultLatLng, defaultZoom);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap contributors",
+  }).addTo(map);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+  function parsePrice(priceStr) {
+    if (!priceStr) return null;
+    let num = priceStr.replace(/[^\d]/g, "");
+    return num ? parseInt(num) : null;
+  }
 
-    function parsePrice(priceStr) {
-      if (!priceStr) return null;
-      let num = priceStr.replace(/[^\d]/g, "");
-      return num ? parseInt(num) : null;
+  function parseAge(ageStr) {
+    const match = ageStr.match(/(\d+)/);
+    return match ? parseInt(match[1]) : null;
+  }
+
+  function fillSelectOptions(id, items) {
+    const select = document.getElementById(id);
+    select.innerHTML = '<option value="">全部</option>'; // 先清空再加
+    const uniqueItems = Array.from(new Set(items.filter((i) => i)));
+    uniqueItems.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item;
+      option.textContent = item;
+      select.appendChild(option);
+    });
+  }
+
+  function initFilters() {
+    fillSelectOptions(
+      "areaSelect",
+      properties.map((p) => (p.area.match(/\S+區/) || [])[0])
+    );
+    fillSelectOptions(
+      "typeSelect",
+      properties.map((p) => p.type_status.split("/")[0].trim())
+    );
+
+    // 格局用 layout_num 排序
+    const layoutItems = Array.from(
+      new Set(
+        properties
+          .filter(p => p.layout_num !== undefined && p.layout_num !== null)
+          .sort((a, b) => a.layout_num - b.layout_num)
+          .map(p => p.layout_num + "房")
+      )
+    );
+    fillSelectOptions("layoutSelect", layoutItems);
+  }
+
+  function clearMarkers() {
+    if (markerClusterGroup) markerClusterGroup.clearLayers();
+    markers = [];
+  }
+
+  async function edmFileExists(url) {
+    try {
+      const response = await fetch(url, { method: "HEAD" });
+      return response.ok;
+    } catch {
+      return false;
     }
+  }
 
-    function parseAge(ageStr) {
-      const match = ageStr.match(/(\d+)/);
-      return match ? parseInt(match[1]) : null;
+  async function createMarker(property) {
+    const marker = L.marker([property.lat, property.lng]);
+    const price = parsePrice(property.price);
+    const priceText = price ? price + " 萬" : "未知";
+    const edmPath = `static/sedm_pages/${property.edm_id}.html`;
+
+    let popupContent = `
+      <b>${property.name}</b><br/>
+      區域：${property.area}<br/>
+      房型：${property.type_status.split("/")[0].trim()}<br/>
+      格局：${property.layout}<br/>
+      價格：${priceText}<br/>
+      屋齡：${property.age}<br/>
+    `;
+    if (await edmFileExists(edmPath)) {
+      popupContent += `<a href="${edmPath}" target="_blank" rel="noopener noreferrer">查看 EDM</a>`;
     }
+    marker.bindPopup(popupContent);
+    return marker;
+  }
 
-    function fillSelectOptions(id, items) {
-      const select = document.getElementById(id);
-      const uniqueItems = Array.from(new Set(items.filter((i) => i))).sort();
-      uniqueItems.forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item;
-        option.textContent = item;
-        select.appendChild(option);
-      });
-    }
+  async function updateMap(focusOnArea = false) {
+    clearMarkers();
+    const area = document.getElementById("areaSelect").value;
+    const type = document.getElementById("typeSelect").value;
+    const layout = document.getElementById("layoutSelect").value;
+    const maxAge = parseInt(document.getElementById("ageSelect").value) || Infinity;
+    const minPrice = parseInt(document.getElementById("minPrice").value) || 0;
+    const maxPriceInput = document.getElementById("maxPrice").value;
+    const maxPrice = maxPriceInput ? parseInt(maxPriceInput) : Infinity;
 
-    function initFilters() {
-      fillSelectOptions(
-        "areaSelect",
-        properties.map((p) => (p.area.match(/\S+區/) || [])[0])
-      );
-      fillSelectOptions(
-        "typeSelect",
-        properties.map((p) => p.type_status.split("/")[0].trim())
-      );
-      fillSelectOptions(
-        "layoutSelect",
-        properties.map((p) => {
-          const match = p.layout.match(/^\s*(\d+)/);
-          return match ? match[1] + "房" : "";
-        })
-      );
-    }
+    const filtered = properties.filter((p) => {
+      const price = parsePrice(p.price) || 0;
+      const pAge = parseAge(p.age) || Infinity;
+      const matchArea = area ? p.area.includes(area) : true;
+      const pType = p.type_status.split("/")[0].trim();
+      const matchType = type ? pType === type : true;
 
-    function clearMarkers() {
-      if (markerClusterGroup) {
-        markerClusterGroup.clearLayers();
-      }
-      markers = [];
-    }
+      // 用 layout_num 篩選
+      const matchLayout = layout
+        ? (p.layout_num !== undefined && p.layout_num + "房" === layout)
+        : true;
 
-    async function edmFileExists(url) {
-      try {
-        const response = await fetch(url, { method: "HEAD" });
-        return response.ok;
-      } catch (err) {
-        return false;
-      }
-    }
-
-    async function createMarker(property) {
-      const marker = L.marker([property.lat, property.lng]);
-      const price = parsePrice(property.price);
-      const priceText = price ? price + " 萬" : "未知";
-      const edmPath = `static/sedm_pages/${property.edm_id}.html`;
-
-      let popupContent = `
-        <b>${property.name}</b><br/>
-        區域：${property.area}<br/>
-        房型：${property.type_status.split("/")[0].trim()}<br/>
-        格局：${property.layout}<br/>
-        價格：${priceText}<br/>
-        屋齡：${property.age}<br/>
-      `;
-
-      const exists = await edmFileExists(edmPath);
-      if (exists) {
-        popupContent += `<a href="${edmPath}" target="_blank" rel="noopener noreferrer">查看 EDM</a>`;
-      }
-
-      marker.bindPopup(popupContent);
-      return marker;
-    }
-
-    async function updateMap() {
-      clearMarkers();
-
-      const area = document.getElementById("areaSelect").value;
-      const type = document.getElementById("typeSelect").value;
-      const layout = document.getElementById("layoutSelect").value;
-      const maxAge = parseInt(document.getElementById("ageSelect").value) || Infinity;
-      const minPrice = parseInt(document.getElementById("minPrice").value) || 0;
-      const maxPriceInput = document.getElementById("maxPrice").value;
-      const maxPrice = maxPriceInput ? parseInt(maxPriceInput) : Infinity;
-
-      const filtered = properties.filter((p) => {
-        const price = parsePrice(p.price) || 0;
-        const pAge = parseAge(p.age) || Infinity;
-        const matchArea = area ? p.area.includes(area) : true;
-        const pType = p.type_status.split("/")[0].trim();
-        const matchType = type ? pType === type : true;
-        const matchLayout = layout
-          ? p.layout.match(/^\s*(\d+)/)?.[1] + "房" === layout
-          : true;
-        const matchPrice = price >= minPrice && price <= maxPrice;
-        const matchAge = pAge <= maxAge;
-        return matchArea && matchType && matchLayout && matchPrice && matchAge;
-      });
-
-      document.getElementById("countDisplay").textContent = `物件數: ${filtered.length}`;
-
-      if (filtered.length === 0) {
-        alert("沒有符合篩選條件的物件");
-      }
-
-      markerClusterGroup = L.markerClusterGroup({
-        maxClusterRadius: 60,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 16,
-      });
-
-      for (const p of filtered) {
-        const marker = await createMarker(p);
-        markerClusterGroup.addLayer(marker);
-        markers.push(marker);
-      }
-
-      markerClusterGroup.addTo(map);
-
-      map.setView(defaultLatLng, defaultZoom);
-    }
-
-    ["areaSelect", "typeSelect", "layoutSelect", "ageSelect"].forEach((id) => {
-      document.getElementById(id).addEventListener("change", updateMap);
+      const matchPrice = price >= minPrice && price <= maxPrice;
+      const matchAge = pAge <= maxAge;
+      return matchArea && matchType && matchLayout && matchPrice && matchAge;
     });
 
-    document.getElementById("applyBtn").addEventListener("click", updateMap);
-
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      ["areaSelect", "typeSelect", "layoutSelect", "ageSelect", "minPrice", "maxPrice"].forEach(
-        (id) => (document.getElementById(id).value = "")
-      );
-      updateMap();
+    document.getElementById("countDisplay").textContent = `物件數: ${filtered.length}`;
+    markerClusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 60,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      spiderfyOnMaxZoom: true,
+      disableClusteringAtZoom: 16,
     });
 
-    async function loadProperties() {
-      try {
-        const response = await fetch("static/properties.json");
-        properties = await response.json();
-        initFilters();
-        await updateMap();
-      } catch (e) {
-        alert("讀取資料失敗，請確認 JSON 路徑正確且有啟動本地伺服器。");
-        console.error(e);
+    const markerList = await Promise.all(filtered.map(p => createMarker(p)));
+    markerList.forEach(marker => {
+      markerClusterGroup.addLayer(marker);
+      markers.push(marker);
+    });
+    markerClusterGroup.addTo(map);
+
+    if (focusOnArea) {
+      if (markers.length > 0) {
+        map.fitBounds(L.featureGroup(markers).getBounds(), { padding: [50, 50] });
+      } else {
+        map.setView(defaultLatLng, defaultZoom);
       }
     }
+  }
 
-    loadProperties();
-  </script>
+  async function loadProperties() {
+    try {
+      const response = await fetch("static/properties.json");
+      properties = await response.json();
+      initFilters();
+      await updateMap(true); // 初次載入顯示全部並自動 fit 範圍
+    } catch (e) {
+      alert("讀取資料失敗，請確認 JSON 路徑正確且有啟動本地伺服器。");
+      console.error(e);
+    }
+  }
+
+  document.getElementById("areaSelect").addEventListener("change", () => updateMap(true));
+  ["typeSelect", "layoutSelect", "ageSelect", "minPrice", "maxPrice"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => updateMap(false));
+  });
+  document.getElementById("applyBtn").addEventListener("click", () => updateMap(false));
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    ["areaSelect", "typeSelect", "layoutSelect", "ageSelect", "minPrice", "maxPrice"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    updateMap(true);
+  });
+
+  loadProperties();
+</script>
+
 </body>
 </html>
