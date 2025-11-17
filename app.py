@@ -661,6 +661,10 @@ def rent():
 
     )
 
+@app.route('/admin/calculator', methods=['GET'])
+def admin_calculator():
+    return render_template('admin_calculator.html')
+
 
 
 @app.route('/admin/query', methods=['GET', 'POST'])

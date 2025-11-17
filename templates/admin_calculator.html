@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>房地合一損益試算器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f5f5f7;
+      margin: 0;
+      padding: 16px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px 20px 28px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+    }
+    .sub {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    fieldset {
+      border: none;
+      margin: 0 0 16px;
+      padding: 0;
+    }
+    legend {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.7fr 1.2fr;
+      gap: 8px 12px;
+      align-items: center;
+    }
+    label {
+      font-size: 0.9rem;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: #888;
+    }
+    .btn-row {
+      margin: 12px 0 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: #0071e3;
+      color: #fff;
+    }
+    button.secondary {
+      background: #e5e5ea;
+      color: #222;
+    }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .value-main {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .value-sub {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.5;
+    }
+    .error {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #c00;
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1.5fr 1.1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>房地合一損益試算器</h1>
+    <div class="sub">所有金額單位：<b>萬元</b>（例如 835 萬請輸入 835）</div>
+
+    <form id="calcForm" onsubmit="event.preventDefault(); calculate();">
+      <fieldset>
+        <legend>輸入條件</legend>
+        <div class="grid">
+          <label for="buyPrice">買入總價（成交價）</label>
+          <input id="buyPrice" type="number" step="0.01" value="835" />
+
+          <label for="deedFee">代書費＋雜費</label>
+          <input id="deedFee" type="number" step="0.01" value="8" />
+
+          <label for="buyerComm">買方仲介費</label>
+          <input id="buyerComm" type="number" step="0.01" value="16.7" />
+
+          <label for="loanPrincipal">
+            貸款本金（算利息用）
+            <div class="hint">若不算利息，填 0 即可</div>
+          </label>
+          <input id="loanPrincipal" type="number" step="0.01" value="668" />
+
+          <label for="annualRate">年利率（％）</label>
+          <input id="annualRate" type="number" step="0.01" value="2.2" />
+
+          <label for="months">持有月數</label>
+          <input id="months" type="number" step="1" value="1" />
+
+          <label for="taxRate">
+            房地合一稅率（％）
+            <div class="hint">未滿 2 年多為 45％，依規定調整</div>
+          </label>
+          <input id="taxRate" type="number" step="0.01" value="45" />
+
+          <label for="sellerCommRate">
+            賣方仲介費率（％）
+          </label>
+          <input id="sellerCommRate" type="number" step="0.01" value="4" />
+
+          <label for="targetProfit">
+            想要實賺金額（稅後淨賺）
+            <div class="hint">例如想賺 50 萬就填 50；不特別要求填 0</div>
+          </label>
+          <input id="targetProfit" type="number" step="0.01" value="0" />
+        </div>
+      </fieldset>
+
+      <div class="btn-row">
+        <button type="submit">重新計算</button>
+        <button type="button" class="secondary" onclick="resetForm()">清空想賺金額（只看損益兩平）</button>
+      </div>
+      <div id="error" class="error"></div>
+    </form>
+
+    <div class="results">
+      <div class="card">
+        <h3>損益兩平售價</h3>
+        <div class="value-main" id="breakEvenPrice">—</div>
+        <div class="value-sub">
+          這是在目前條件下，<br>賣到這個金額，你<b>剛好不賺不賠</b>。<br><br>
+          預估稅額：<span id="breakTax">—</span> 萬<br>
+          賣方仲介費：<span id="breakComm">—</span> 萬<br>
+          實際入袋：<span id="breakNet">—</span> 萬
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>目標獲利所需售價</h3>
+        <div class="value-main" id="targetPrice">—</div>
+        <div class="value-sub">
+          在「想賺」欄位填的金額，<br>要實際入袋達到那個數字，<br>至少要賣到這個價格。<br><br>
+          預估稅額：<span id="targetTax">—</span> 萬<br>
+          賣方仲介費：<span id="targetComm">—</span> 萬<br>
+          實際入袋：<span id="targetNet">—</span> 萬<br>
+          實際淨賺：<span id="targetRealProfit">—</span> 萬
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>成本概況</h3>
+        <div class="value-sub">
+          固定可扣除成本（代書＋買方仲介）：<br>
+          <b><span id="fixedCost">—</span> 萬</b><br><br>
+          利息成本：<b><span id="interestCost">—</span> 萬</b><br>
+          總成本 K（房價＋成本＋利息）：<br>
+          <b><span id="totalCost">—</span> 萬</b><br><br>
+          稅法基礎成本（房價＋代書＋買方仲介）：<br>
+          <b><span id="taxBasis">—</span> 萬</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getNumber(id) {
+      const v = parseFloat(document.getElementById(id).value);
+      return isNaN(v) ? 0 : v;
+    }
+
+    function format(num) {
+      if (!isFinite(num)) return "—";
+      return num.toFixed(2);
+    }
+
+    function calculate() {
+      const buyPrice       = getNumber("buyPrice");
+      const deedFee        = getNumber("deedFee");
+      const buyerComm      = getNumber("buyerComm");
+      const loanPrincipal  = getNumber("loanPrincipal");
+      const annualRate     = getNumber("annualRate") / 100;
+      const months         = getNumber("months");
+      const taxRate        = getNumber("taxRate") / 100;
+      const sellerCommRate = getNumber("sellerCommRate") / 100;
+      const targetProfit   = getNumber("targetProfit");
+
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+
+      const fixedCost = deedFee + buyerComm;
+      const interestCost = loanPrincipal * annualRate * (months / 12);
+      const totalCostK = buyPrice + fixedCost + interestCost;
+      const taxBasisCost = buyPrice + deedFee + buyerComm;
+
+      const denom = (1 - sellerCommRate) * (1 - taxRate);
+      if (denom <= 0) {
+        errorEl.textContent = "請確認稅率與仲介費率是否合理（(1−仲介費率)×(1−稅率) 不能小於等於 0）。";
+        return;
+      }
+
+      // Break-even sale price
+      const breakPrice = (totalCostK - taxRate * taxBasisCost) / denom;
+      const taxableGainBreak = (1 - sellerCommRate) * breakPrice - taxBasisCost;
+      const taxBreak = Math.max(0, taxRate * taxableGainBreak);
+      const commBreak = breakPrice * sellerCommRate;
+      const netBreak = breakPrice - taxBreak - commBreak;
+
+      // Target-profit sale price
+      const targetPrice = (totalCostK + targetProfit - taxRate * taxBasisCost) / denom;
+      const taxableGainTarget = (1 - sellerCommRate) * targetPrice - taxBasisCost;
+      const taxTarget = Math.max(0, taxRate * taxableGainTarget);
+      const commTarget = targetPrice * sellerCommRate;
+      const netTarget = targetPrice - taxTarget - commTarget;
+      const realProfit = netTarget - totalCostK;
+
+      // Update DOM
+      document.getElementById("fixedCost").textContent  = format(fixedCost);
+      document.getElementById("interestCost").textContent = format(interestCost);
+      document.getElementById("totalCost").textContent  = format(totalCostK);
+      document.getElementById("taxBasis").textContent   = format(taxBasisCost);
+
+      document.getElementById("breakEvenPrice").textContent = format(breakPrice) + " 萬";
+      document.getElementById("breakTax").textContent       = format(taxBreak);
+      document.getElementById("breakComm").textContent      = format(commBreak);
+      document.getElementById("breakNet").textContent       = format(netBreak);
+
+      document.getElementById("targetPrice").textContent      = format(targetPrice) + " 萬";
+      document.getElementById("targetTax").textContent        = format(taxTarget);
+      document.getElementById("targetComm").textContent       = format(commTarget);
+      document.getElementById("targetNet").textContent        = format(netTarget);
+      document.getElementById("targetRealProfit").textContent = format(realProfit);
+    }
+
+    function resetForm() {
+      document.getElementById("targetProfit").value = 0;
+      calculate();
+    }
+
+    // 初次載入先算一次（用預設值）
+    window.addEventListener("DOMContentLoaded", calculate);
+  </script>
+</body>
+</html>
