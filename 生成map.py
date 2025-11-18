@@ -15,8 +15,8 @@ output_json = os.path.join(BASE_DIR, "static", "properties.json")
 # sitemap 輸出資料夾
 sitemap_dir = os.path.join(BASE_DIR, "static")
 
-# 👉 改成你的正式網址（不要斜線）
-BASE_URL = "https://example.com"   # ← 改成你的網域
+# ✅ 你的正式網址（不要斜線結尾）
+BASE_URL = "https://ellen-my-homie.onrender.com"
 
 
 # ===== 讀取 Excel =====
@@ -52,7 +52,7 @@ for _, row in df.iterrows():
     layout_match = re.match(r"\s*(\d+)", layout_raw)
     layout_num = int(layout_match.group(1)) if layout_match else 0
 
-    # 保持你原本邏輯：有座標才加入（如果你希望所有物件生成，可以移除此條件）
+    # 保持你原本邏輯：有座標才加入（如果希望所有物件都進 sitemap，可以把這個 if 拿掉）
     if lat is not None and lng is not None:
         properties.append({
             "name": str(row.get("房屋標題", "")).strip(),
@@ -96,10 +96,26 @@ def build_sitemap_xml(url_list):
     return pretty_xml
 
 
+def build_sitemap_index_xml(sitemap_urls):
+    """產生 sitemap_index.xml 的漂亮 XML"""
+    sitemapindex = Element("sitemapindex")
+    sitemapindex.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
+
+    for sm_url in sitemap_urls:
+        sm = SubElement(sitemapindex, "sitemap")
+        loc = SubElement(sm, "loc")
+        loc.text = sm_url
+
+    rough_xml = tostring(sitemapindex, encoding="utf-8")
+    reparsed = minidom.parseString(rough_xml)
+    pretty_xml = reparsed.toprettyxml(indent="  ", encoding="utf-8")
+    return pretty_xml
+
+
 # 每份 sitemap 最多筆數
 CHUNK_SIZE = 500
 
-# 組出所有 URL
+# 組出所有 URL（依照你的物件頁路徑）
 all_urls = [
     f"{BASE_URL}/static/sedm_pages/{p['edm_id']}.html"
     for p in properties
@@ -108,22 +124,39 @@ all_urls = [
 os.makedirs(sitemap_dir, exist_ok=True)
 
 sitemap_files = []
+sitemap_urls = []  # 存每個 sitemap.xml 對應的完整網址，給 sitemap_index 用
 
-# 分批寫入 sitemap
+# 分批寫入 sitemap1.xml, sitemap2.xml, ...
 for idx in range(0, len(all_urls), CHUNK_SIZE):
     chunk = all_urls[idx:idx + CHUNK_SIZE]
     file_index = idx // CHUNK_SIZE + 1
 
     xml_bytes = build_sitemap_xml(chunk)
 
-    sitemap_filename = os.path.join(sitemap_dir, f"sitemap{file_index}.xml")
+    filename = f"sitemap{file_index}.xml"
+    sitemap_filepath = os.path.join(sitemap_dir, filename)
+    sitemap_file_url = f"{BASE_URL}/static/{filename}"
 
-    with open(sitemap_filename, "wb") as f:
+    with open(sitemap_filepath, "wb") as f:
         f.write(xml_bytes)
 
-    sitemap_files.append(sitemap_filename)
-    print(f"✅ 已生成 {sitemap_filename} — {len(chunk)} 筆資料")
+    sitemap_files.append(sitemap_filepath)
+    sitemap_urls.append(sitemap_file_url)
+    print(f"✅ 已生成 {sitemap_filepath} — {len(chunk)} 筆資料")
 
 
-print(f"\n🎉 全部 sitemap 生成完成！共 {len(sitemap_files)} 個檔案")
-print("👉 記得在 Google Search Console 提交 sitemap1.xml / sitemap2.xml …")
+# ===== 產生 sitemap_index.xml =====
+index_xml_bytes = build_sitemap_index_xml(sitemap_urls)
+sitemap_index_path = os.path.join(sitemap_dir, "sitemap_index.xml")
+
+with open(sitemap_index_path, "wb") as f:
+    f.write(index_xml_bytes)
+
+print(f"\n✅ sitemap_index.xml 已生成：{sitemap_index_path}")
+print("📌 內含以下 sitemap：")
+for u in sitemap_urls:
+    print("  -", u)
+
+print("\n🎉 全部 sitemap 生成完成！")
+print("👉 到 Google Search Console 提交：")
+print("   https://ellen-my-homie.onrender.com/static/sitemap_index.xml")
