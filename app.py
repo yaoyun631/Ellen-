@@ -331,7 +331,7 @@ def index():
         building_min = request.form.get("building_min", "")
         building_max = request.form.get("building_max", "")
         keyword = request.form.get("keyword", "")
-        sort_by = request.form.get("sort_by", "委託總價")
+        sort_by = request.form.get("sort_by", "屋齡")
         sort_order = request.form.get("sort_order", "asc")
         selected_has_elevator = request.form.get("has_elevator") == "1"
         age_min = request.form.get("age_min", "") 
@@ -351,7 +351,7 @@ def index():
         building_min = request.args.get("building_min", "")
         building_max = request.args.get("building_max", "")
         keyword = request.args.get("keyword", "")
-        sort_by = request.args.get("sort_by", "委託總價")
+        sort_by = request.args.get("sort_by", "屋齡")
         sort_order = request.args.get("sort_order", "asc")
         selected_has_elevator = request.args.get("has_elevator") == "1"
         page = int(request.args.get("page", 1))
