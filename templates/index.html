@@ -554,16 +554,17 @@
             {{ row.房廳衛 or '-' }}
           </div>
 
-          <div class="d-flex justify-content-end align-items-end mt-1">
-            <span class="price-text">
-              {% if row.委託總價 is number %}
-                {{ row.委託總價|int }}
-              {% else %}
-                無資料
-              {% endif %}
-            </span>
-            <span class="price-unit ms-1">萬</span>
+          <div class="price-wrap">
+              <span class="price-text">
+                  {% if row.委託總價 is number %}
+                      {{ row.委託總價|int }}
+                  {% else %}
+                      無資料
+                  {% endif %}
+              </span>
+              <span class="price-unit ms-1">萬</span>
           </div>
+
         </div>
       </div>
 
