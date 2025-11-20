@@ -2,154 +2,372 @@
 {% block title %}Ellen租屋專區{% endblock %}
 {% block content %}
 
-<div class="container mt-4">
+<style>
+  :root {
+    --nc-bg:        #F2E7D8;
+    --nc-panel:     #F7ECDE;
+    --nc-main:      #F3E6D4;
+    --nc-accent:    #D2A784;
+    --nc-text:      #4A3F35;
+  }
 
-  <!-- 查詢表單 -->
-  <div class="p-4 mb-5" style="background-color: #CABAA1; border: 1px solid #eee; border-radius: 8px;">
-    <h2 class="mb-4 d-flex align-items-center justify-content-between">
-      <span>🏠台中租屋</span>
-      <span>
-        <a href="{{ url_for('index') }}" class="btn btn-sm btn-primary me-2">找好房</a>
-        <a href="{{ url_for('rent') }}" class="btn btn-sm btn-success">租好屋</a>
-      </span>
-    </h2>
+  /* 篩選面板（沿用 index 的 591 風格） */
+  .filter-panel {
+    background: var(--nc-panel);
+    border: 1px solid #e4d4c4;
+    border-radius: 10px;
+    padding: 14px 18px 10px;
+    font-size: 14px;
+  }
+  .filter-header {
+    padding-bottom: 8px;
+  }
+  .filter-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 6px 0;
+    border-top: 1px solid #eadccf;
+  }
+  .filter-row:first-of-type {
+    border-top: none;
+  }
+  .filter-label {
+    width: 70px;
+    flex-shrink: 0;
+    color: #8b7a68;
+    padding-top: 4px;
+  }
+  .filter-options {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+  .filter-options label {
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--nc-text);
+  }
+  .filter-options input[type="checkbox"],
+  .filter-options input[type="radio"] {
+    margin-right: 4px;
+  }
+
+  .filter-inline-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .filter-inline-inputs .form-control {
+    width: 110px;
+    height: 30px;
+    padding: 2px 6px;
+    font-size: 13px;
+  }
+
+  .filter-footer {
+    border-top: 1px solid #eadccf;
+    padding-top: 8px;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* 手機上的上方篩選 bar */
+  .filter-bar-mobile {
+    background: var(--nc-panel);
+    border: 1px solid #e4d4c4;
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* RWD：手機版變折疊，桌機版永遠展開 */
+  @media (max-width: 767.98px) {
+    #filterPanel {
+      display: none;
+    }
+    #filterPanel.show-mobile {
+      display: block;
+      margin-top: 8px;
+    }
+    .filter-panel {
+      padding: 10px 10px 8px;
+    }
+    .filter-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .filter-label {
+      width: auto;
+      margin-bottom: 4px;
+    }
+    .filter-inline-inputs .form-control {
+      width: 100px;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .filter-bar-mobile {
+      display: none;
+    }
+  }
+
+  /* 物件卡片：跟 index 一樣，手機橫向 / 桌機直立 */
+  .listing-card {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: 0.25s;
+    background: #fff;
+    border: 1px solid #e7d7c7;
+  }
+
+  .listing-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+
+  .listing-img-wrap {
+    flex: 0 0 40%;
+    max-width: 40%;
+    background: transparent !important; /* ✅ 背景透明 */
+  }
+
+  .listing-img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: transparent !important; /* ✅ 圖片背景透明 */
+  }
+
+  .listing-body {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .listing-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.3;
+    color: var(--nc-text);
+  }
+
+  .listing-info {
+    font-size: 0.85rem;
+    color: #8b7a68;
+    margin-bottom: 2px;
+  }
+
+  .listing-spec {
+    font-size: 0.8rem;
+    color: #6d5a4a;
+  }
+
+  .price-text {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #d63b2b;
+  }
+
+  .price-unit {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6d5a4a;
+  }
+
+  @media (min-width: 768px) {
+    .listing-card {
+      flex-direction: column;
+    }
+    .listing-img-wrap {
+      flex: 0 0 auto;
+      max-width: 100%;
+    }
+    .listing-img {
+      height: 180px;
+    }
+    .listing-body {
+      padding: 0.75rem 0.9rem 0.9rem 0.9rem;
+    }
+    .listing-title {
+      font-size: 1.05rem;
+    }
+    .price-text {
+      font-size: 1.4rem;
+    }
+  }
+
+  .btn-ellen-primary {
+    background-color: var(--nc-accent);
+    border: none;
+    color: #fff;
+  }
+  .btn-ellen-primary:hover {
+    background-color: #c89462;
+    color: #fff;
+  }
+</style>
+
+<div class="mt-3">
+
+  <!-- 手機版：上方一排「篩選條件 ▾」 -->
+  <div class="filter-bar-mobile d-md-none mb-2" onclick="toggleMobileFilter()">
+    <div>
+      <i class="bi bi-sliders me-1"></i> 租屋條件
+    </div>
+    <div class="d-flex align-items-center">
+      <span class="small text-muted me-2">共 {{ total_records }} 筆</span>
+      <i id="filterArrowIcon" class="bi bi-chevron-down"></i>
+    </div>
+  </div>
+
+  <!-- 篩選面板 -->
+  <div id="filterPanel" class="filter-panel mb-4">
+    <div class="filter-header d-flex justify-content-between align-items-center">
+      <div>
+        <span class="fw-bold me-3" style="color: var(--nc-text);">🏠 台中租屋條件</span>
+        <a href="{{ url_for('rent') }}" class="text-secondary small text-decoration-none">清空條件</a>
+      </div>
+      <div class="d-none d-md-block">
+        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary me-1">找好房</a>
+        <a href="{{ url_for('rent') }}" class="btn btn-sm btn-ellen-primary text-white">租好屋</a>
+      </div>
+    </div>
 
     <form method="GET" id="rentSearchForm">
-      <div class="row g-3">
 
-        <!-- 區域 -->
-        <div class="col-12">
-          <label class="form-label">區域</label><br />
-          <label class="me-3"><input type="checkbox" id="area_all" onchange="toggleAll(this)"> 全部</label>
+      <!-- 區域 -->
+      <div class="filter-row">
+        <div class="filter-label">區域</div>
+        <div class="filter-options">
+          <label class="me-2">
+            <input type="checkbox" id="area_all" onchange="toggleAll(this)"> 全部
+          </label>
           {% for d in taichung_districts %}
-          <label class="me-3">
-            <input type="checkbox" name="areas" value="{{ d }}" {% if d in selected_areas %}checked{% endif %}> {{ d.replace('台中市', '') }}
+          <label>
+            <input type="checkbox" name="areas" value="{{ d }}" {% if d in selected_areas %}checked{% endif %}>
+            {{ d.replace('台中市', '') }}
           </label>
           {% endfor %}
         </div>
+      </div>
 
-        <!-- 房屋形式 -->
-        <div class="col-12 mt-3">
-          <label class="form-label">房屋形式</label><br />
+      <!-- 房屋形式 -->
+      <div class="filter-row">
+        <div class="filter-label">房屋形式</div>
+        <div class="filter-options">
           {% set house_forms = ["整層住家", "獨立套房", "分租套房", "雅房", "店面", "商辦", "廠房", "土地"] %}
           {% for f in house_forms %}
-          <label class="me-2">
+          <label>
             <input type="checkbox" name="house_forms" value="{{ f }}" {% if f in selected_house_forms %}checked{% endif %}> {{ f }}
           </label>
           {% endfor %}
         </div>
+      </div>
 
-        <!-- 房屋類型 -->
-        <div class="col-12 mt-3">
-          <label class="form-label">房屋類型</label><br />
+      <!-- 房屋類型 -->
+      <div class="filter-row">
+        <div class="filter-label">房屋類型</div>
+        <div class="filter-options">
           {% set house_types = ["透天", "別墅", "華廈", "公寓", "電梯大樓", "其他"] %}
           {% for t in house_types %}
-          <label class="me-2">
+          <label>
             <input type="checkbox" name="house_types" value="{{ t }}" {% if t in selected_house_types %}checked{% endif %}> {{ t }}
           </label>
           {% endfor %}
         </div>
+      </div>
 
-        <!-- 🌟 特色 -->
-        <div class="col-12 mt-3">
-          <label class="form-label fw-bold">特色</label><br />
+      <!-- 特色 -->
+      <div class="filter-row">
+        <div class="filter-label">特色</div>
+        <div class="filter-options">
           <div class="d-flex flex-wrap align-items-center">
-            <!-- 可寵物 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可寵物
-              </label>
-            </div>
-            <!-- 有陽台 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_balcony" value="1" {% if selected_has_balcony %}checked{% endif %}> 有陽台
-              </label>
-            </div>
-            <!-- 有車位 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_parking" value="1" {% if selected_has_parking %}checked{% endif %}> 有車位
-              </label>
-            </div>
-            <!-- 有飲水機 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_water_cooler" value="1" {% if selected_has_water_cooler %}checked{% endif %}> 有飲水機
-              </label>
-            </div>
-            <!-- 有子母車 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_wheelie_bin" value="1" {% if selected_has_wheelie_bin %}checked{% endif %}> 有子母車
-              </label>
-            </div>
-            <!-- 有流理台 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_sink" value="1" {% if selected_has_sink %}checked{% endif %}> 有流理台
-              </label>
-            </div>
-            <!-- 衛浴乾濕分離 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_bath_separate" value="1" {% if selected_has_bath_separate %}checked{% endif %}> 衛浴乾濕分離
-              </label>
-            </div>
-            <!-- 獨立洗衣機 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_washer_indep" value="1" {% if selected_has_washer_indep %}checked{% endif %}> 獨立洗衣機
-              </label>
-            </div>
-
-            <!-- 可短租 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_short_term" value="1" {% if selected_has_short_term %}checked{% endif %}> 可短租
-              </label>
-            </div>
-
-            <!-- 有電梯 -->
-            <div class="me-4 mb-2">
-              <label>
-                <input type="checkbox" name="has_elevator" value="1" {% if selected_has_elevator %}checked{% endif %}> 有電梯
-              </label>
-            </div>
-
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="pets" value="2" {% if '2' in selected_pets %}checked{% endif %}> 可寵物
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_balcony" value="1" {% if selected_has_balcony %}checked{% endif %}> 有陽台
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_parking" value="1" {% if selected_has_parking %}checked{% endif %}> 有車位
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_water_cooler" value="1" {% if selected_has_water_cooler %}checked{% endif %}> 有飲水機
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_wheelie_bin" value="1" {% if selected_has_wheelie_bin %}checked{% endif %}> 有子母車
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_sink" value="1" {% if selected_has_sink %}checked{% endif %}> 有流理台
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_bath_separate" value="1" {% if selected_has_bath_separate %}checked{% endif %}> 衛浴乾濕分離
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_washer_indep" value="1" {% if selected_has_washer_indep %}checked{% endif %}> 獨立洗衣機
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_short_term" value="1" {% if selected_has_short_term %}checked{% endif %}> 可短租
+            </label>
+            <label class="me-4 mb-2">
+              <input type="checkbox" name="has_elevator" value="1" {% if selected_has_elevator %}checked{% endif %}> 有電梯
+            </label>
           </div>
         </div>
+      </div>
 
-        <!-- 格局 -->
-        <div class="col-6 col-md-2">
-          <label for="room_min" class="form-label">格局最小(房)</label>
-          <input type="text" name="room_min" id="room_min" class="form-control" pattern="\d*" inputmode="numeric" value="{{ room_min }}">
+      <!-- 價格 / 格局 -->
+      <div class="filter-row">
+        <div class="filter-label">條件</div>
+        <div class="filter-options">
+          <div class="filter-inline-inputs">
+            <div>
+              <span class="small text-muted">格局最小(房)</span><br>
+              <input type="text" name="room_min" id="room_min" class="form-control"
+                     pattern="\d*" inputmode="numeric" value="{{ room_min }}">
+            </div>
+            <div>
+              <span class="small text-muted">格局最大(房)</span><br>
+              <input type="text" name="room_max" id="room_max" class="form-control"
+                     pattern="\d*" inputmode="numeric" value="{{ room_max }}">
+            </div>
+            <div>
+              <span class="small text-muted">租金最小(元)</span><br>
+              <input type="text" name="price_min" id="price_min" class="form-control"
+                     pattern="\d*" inputmode="numeric" value="{{ price_min }}">
+            </div>
+            <div>
+              <span class="small text-muted">租金最大(元)</span><br>
+              <input type="text" name="price_max" id="price_max" class="form-control"
+                     pattern="\d*" inputmode="numeric" value="{{ price_max }}">
+            </div>
+          </div>
         </div>
-        <div class="col-6 col-md-2">
-          <label for="room_max" class="form-label">格局最大(房)</label>
-          <input type="text" name="room_max" id="room_max" class="form-control" pattern="\d*" inputmode="numeric" value="{{ room_max }}">
-        </div>
+      </div>
 
-        <!-- 租金 -->
-        <div class="col-6 col-md-2">
-          <label for="price_min" class="form-label">租金最小(元)</label>
-          <input type="text" name="price_min" id="price_min" class="form-control" pattern="\d*" inputmode="numeric" value="{{ price_min }}">
+      <!-- 關鍵字 -->
+      <div class="filter-row">
+        <div class="filter-label">關鍵字</div>
+        <div class="filter-options">
+          <input type="text" name="keyword" id="keyword"
+                 class="form-control" style="max-width: 260px;"
+                 value="{{ keyword }}" placeholder="地址、描述關鍵字">
         </div>
-        <div class="col-6 col-md-2">
-          <label for="price_max" class="form-label">租金最大(元)</label>
-          <input type="text" name="price_max" id="price_max" class="form-control" pattern="\d*" inputmode="numeric" value="{{ price_max }}">
-        </div>
+      </div>
 
-        <!-- 關鍵字 -->
-        <div class="col-12 col-md-6">
-          <label for="keyword" class="form-label">關鍵字（地址、描述）</label>
-          <input type="text" name="keyword" id="keyword" class="form-control" value="{{ keyword }}">
-        </div>
-
-        <!-- 排序選單放在關鍵字旁邊 -->
-        <div class="col-12 col-md-6">
-          <label for="sort_by" class="form-label fw-bold">排序方式</label>
-          <select name="sort_by" id="sort_by" class="form-select">
+      <!-- 排序 -->
+      <div class="filter-row">
+        <div class="filter-label">排序</div>
+        <div class="filter-options">
+          <select name="sort_by" id="sort_by" class="form-select" style="width: 200px; height:30px; font-size:13px;">
             <option value="" {% if not sort_by %}selected{% endif %}>無排序</option>
             <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>租金由小到大</option>
             <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>租金由大到小</option>
@@ -157,52 +375,79 @@
             <option value="room_desc" {% if sort_by == 'room_desc' %}selected{% endif %}>格局由多到少</option>
           </select>
         </div>
-
       </div>
 
-      <!-- 查詢按鈕 -->
-      <div class="mt-3 text-center">
-        <button type="submit" class="btn btn-primary">查詢</button>
+      <!-- 底部：筆數 + 查詢按鈕 -->
+      <div class="filter-footer">
+        <div class="text-muted small">
+          符合條件資料筆數：{{ total_records }}
+        </div>
+        <div>
+          <button type="submit" class="btn btn-sm btn-ellen-primary">
+            搜尋
+          </button>
+        </div>
       </div>
 
     </form>
   </div>
 
-  <!-- 顯示符合資料筆數 -->
-  <p>符合條件資料筆數：{{ total_records }}</p>
-  
   <!-- 公告 -->
-  <p>圖片陸續更新中，如需看更多詳細照片，可以私訊Line，看物件詳細資訊喔~</p>
-  <!-- 租屋列表 -->
-  <div class="row row-cols-1 row-cols-md-3 g-4">
+  <p class="mb-1">圖片陸續更新中，如需看更多詳細照片，可以私訊 Line，看物件詳細資訊喔～</p>
+
+  <!-- 租屋列表（跟 index 一樣的卡片 UI） -->
+  <div id="rentGrid" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
     {% for row in data %}
+    {% set first_image = (row['圖片連結'].split(',')[0].strip()) if row['圖片連結'] else '' %}
+    {% set img = first_image if first_image.startswith('http') else '' %}
+
     <div class="col">
-       <a href="{{ url_for('static', filename='edm_pages/' ~ row.物件編號 ~ '.html') }}" target="_blank" style="text-decoration:none; color:inherit;">
-        <div class="card h-100 shadow-sm">
-          {% set first_image = (row['圖片連結'].split(',')[0].strip()) if row['圖片連結'] else '' %}
-          {% if first_image.startswith('http') %}
-            <img src="{{ first_image }}" class="card-img-top" style="height: 200px; object-fit: cover;">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
-              <span class="text-muted">圖片新增中</span>
-            </div>
-          {% endif %}
-          <div class="card-body">
-            <h5 class="card-title">{{ row['title'] }}</h5>
-            <p class="card-text text-muted">
-              {{ row['district'] }} | {{ row['物件編號'] }}<br>
-              {{ row['格局'] }} ｜ 寵物：{{ row['是否可寵物'] or '-' }}<br>
-              水費:{{ row['水費'] }}｜電費:{{ row['電費'] }}<br>
-              設備：{{ row['設備'] or '-' }}
-            </p>
+      <a href="{{ url_for('static', filename='edm_pages/' ~ row.物件編號 ~ '.html') }}"
+         target="_blank"
+         style="text-decoration:none; color:inherit;">
+
+        <div class="card listing-card shadow-sm">
+
+          <!-- 圖片區（無圖片→顯示透明底 LOGO） -->
+          <div class="listing-img-wrap">
+            <img
+              src="{% if img %}{{ img }}{% else %}{{ url_for('static', filename='images/logo.png') }}{% endif %}"
+              onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/logo.png') }}';"
+              class="listing-img"
+              alt="物件圖片">
           </div>
-          <div class="card-footer text-end">
-            <strong class="text-danger" style="font-size: 1.2rem;">
-              {{ row['租金'] }}
-              {% if row['租金'] != '價格洽詢' %} 元/月{% endif %}
-            </strong>
+
+          <!-- 文字內容 -->
+          <div class="listing-body">
+
+            <h5 class="listing-title text-truncate" title="{{ row['title'] }}">
+              {{ row['title'] }}
+            </h5>
+
+            <div class="listing-info">
+              <i class="bi bi-geo-alt"></i>
+              {{ row['district'] }} ｜ {{ row['物件編號'] }}
+            </div>
+
+            <div class="listing-spec">
+              {{ row['格局'] or '-' }}｜
+              寵物：{{ row['是否可寵物'] or '-' }}｜
+              水費：{{ row['水費'] or '—' }}｜
+              電費：{{ row['電費'] or '—' }}
+            </div>
+
+            <div class="d-flex justify-content-end align-items-end mt-1">
+              <span class="price-text">
+                {{ row['租金'] }}
+              </span>
+              {% if row['租金'] != '價格洽詢' %}
+              <span class="price-unit ms-1">元/月</span>
+              {% endif %}
+            </div>
+
           </div>
         </div>
+
       </a>
     </div>
     {% endfor %}
@@ -211,10 +456,28 @@
 </div>
 
 <script>
-  // 只保留切換「全部區域」勾選，不自動送出表單
+  // 區域勾選全部 / 取消
   function toggleAll(source) {
     document.querySelectorAll('input[name="areas"]').forEach(cb => cb.checked = source.checked);
   }
+
+  // 手機版篩選面板展開 / 收合
+  function toggleMobileFilter() {
+    const panel = document.getElementById('filterPanel');
+    const icon = document.getElementById('filterArrowIcon');
+    if (!panel || !icon) return;
+
+    panel.classList.toggle('show-mobile');
+    if (panel.classList.contains('show-mobile')) {
+      icon.classList.remove('bi-chevron-down');
+      icon.classList.add('bi-chevron-up');
+    } else {
+      icon.classList.remove('bi-chevron-up');
+      icon.classList.add('bi-chevron-down');
+    }
+  }
 </script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
 {% endblock %}
