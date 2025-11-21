@@ -2,7 +2,18 @@
 {% block title %}貸款試算 | Ellen帶你找家{% endblock %}
 {% block content %}
 <style>
-  body { background-color: #fdfaf5; }
+  :root{
+    --nc-bg:        #fdf6ef;
+    --nc-panel:     #fff8f0;
+    --nc-panel-soft:#fffaf3;
+    --nc-accent:    #d2a784;
+    --nc-accent-deep:#c0905c;
+    --nc-text-main: #5a4632;
+    --nc-text-sub:  #8f7a63;
+    --nc-border:    #e6d6c3;
+  }
+
+  body { background-color: var(--nc-bg); }
 
   .loan-wrapper {
     max-width: 1000px;
@@ -10,22 +21,29 @@
   }
 
   h2 {
-    color: #8a6e45;
-    font-weight: 700;
+    color: var(--nc-text-main);
+    font-weight: 800;
     margin-bottom: 1rem;
+    display:flex;
+    align-items:center;
+    gap:.4rem;
+  }
+  h2::before{
+    content:"☕";
+    font-size:1.4rem;
   }
 
   .loan-card {
-    background: #fffdf8;
-    border-radius: 14px;
+    background: var(--nc-panel-soft);
+    border-radius: 16px;
     padding: 16px 18px 18px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-    border: 1px solid #e8dccb;
-    margin-bottom: 20px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+    border: 1px solid var(--nc-border);
+    margin-bottom: 16px;
   }
 
   .input-group-line {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     display: flex;
     flex-wrap: wrap;
     gap: 10px 16px;
@@ -34,17 +52,17 @@
 
   .input-group-line label {
     font-size: 14px;
-    color: #4c3b26;
+    color: var(--nc-text-main);
     white-space: nowrap;
   }
 
   .input-group-line input,
   .input-group-line select {
     padding: 6px 8px;
-    border: 1px solid #d4c4af;
-    border-radius: 8px;
+    border: 1px solid var(--nc-border);
+    border-radius: 10px;
     font-size: 14px;
-    background: #fff8f0;
+    background: var(--nc-panel);
   }
 
   .input-group-line input[type="number"],
@@ -53,36 +71,84 @@
   }
 
   .input-group-line input[type="checkbox"] {
-    transform: scale(1.1);
+    transform: scale(1.05);
     margin-right: 4px;
   }
 
   .loan-section-title {
     font-size: 15px;
-    font-weight: 600;
-    color: #7b5b31;
+    font-weight: 700;
+    color: var(--nc-text-main);
     margin-top: 4px;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .loan-section-title::before {
+    content: "▌";
+    color: var(--nc-accent);
+    font-size: 18px;
   }
 
   .loan-btn {
-    background-color: #c8a97b;
+    background-image: linear-gradient(135deg,var(--nc-accent),var(--nc-accent-deep));
     border: none;
     color: white;
     padding: 8px 18px;
-    font-size: 15px;
+    font-size: 14px;
     border-radius: 999px;
     cursor: pointer;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.12);
     margin-top: 8px;
   }
   .loan-btn:hover {
-    background-color: #b59160;
+    filter: brightness(0.95);
+  }
+
+  /* --- 貸款成數 / 年限 膠囊按鈕 --- */
+  .loan-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .loan-chip-group input[type="checkbox"] {
+    display: none;
+  }
+
+  .loan-chip {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--nc-border);
+    background: #fff;
+    color: var(--nc-text-sub);
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1.3;
+    min-width: 52px;
+    text-align: center;
+    user-select: none;
+    transition: all 0.18s ease;
+  }
+
+  .loan-chip:hover {
+    background: #f5ebde;
+  }
+
+  .loanRatio:checked + .loan-chip,
+  .years:checked + .loan-chip {
+    background: var(--nc-accent);
+    color: #fff;
+    border-color: var(--nc-accent-deep);
+    font-weight: 700;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.12);
   }
 
   .table-wrapper {
     overflow-x: auto;
-    margin-top: 20px;
+    margin-top: 14px;
   }
 
   table.responsive-table {
@@ -90,20 +156,20 @@
     width: 100%;
     min-width: 720px;
     background-color: white;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
   }
 
   table.responsive-table th,
   table.responsive-table td {
-    border: 1px solid #ece1d3;
-    padding: 8px 6px;
+    border: 1px solid var(--nc-border);
+    padding: 7px 6px;
     text-align: center;
     font-size: 13px;
   }
 
   table.responsive-table th {
-    background-color: #c8a97b;
+    background-image: linear-gradient(135deg,var(--nc-accent),var(--nc-accent-deep));
     color: white;
     font-weight: 600;
   }
@@ -116,25 +182,50 @@
     background-color: #f3e7d7;
   }
 
-  /* 手機版：表格改成卡片樣式 */
+  /* 整列可點 */
+  table.responsive-table tbody tr {
+    cursor: pointer;
+  }
+
+  /* ===== 手機版 ===== */
   @media (max-width: 768px) {
+    .loan-wrapper {
+      padding: 0 6px;
+    }
+    h2 {
+      font-size: 1.3rem;
+      justify-content:center;
+    }
     .loan-card {
       padding: 12px 10px 14px;
+      border-radius: 16px;
     }
-
     .input-group-line {
       flex-direction: column;
       align-items: flex-start;
-      gap: 6px;
+      gap: 4px;
+      margin-bottom: 8px;
     }
-
     .input-group-line input[type="number"],
     .input-group-line input[type="text"],
     .input-group-line select {
       width: 100%;
-      max-width: 260px;
+      max-width: 240px;
     }
 
+    .loan-chip-group {
+      width: 100%;
+    }
+    .loan-chip {
+      flex: 1 0 calc(25% - 6px);
+      font-size: 12px;
+      padding: 6px 0;
+      min-width: 0;
+    }
+
+    .table-wrapper{
+      margin-top:10px;
+    }
     table.responsive-table {
       border: 0;
       min-width: 0;
@@ -147,20 +238,21 @@
     }
     table.responsive-table tr {
       display: block;
-      margin-bottom: 12px;
-      border: 1px solid #e0d4c3;
-      border-radius: 10px;
-      padding: 6px 8px;
-      background: #fffdf8;
+      margin-bottom: 8px;
+      border: 1px solid var(--nc-border);
+      border-radius: 12px;
+      padding: 4px 6px;
+      background: var(--nc-panel-soft);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
     }
     table.responsive-table td {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       border: none;
       border-bottom: 1px solid #f0e6d8;
-      padding: 6px 4px;
-      font-size: 13px;
+      padding: 4px 2px;
+      font-size: 12px;
     }
     table.responsive-table td:last-child {
       border-bottom: none;
@@ -168,68 +260,115 @@
     table.responsive-table td::before {
       content: attr(data-label);
       font-weight: 600;
-      color: #7b5b31;
-      margin-right: 8px;
+      color: var(--nc-text-main);
+      margin-right: 6px;
       text-align: left;
       flex: 0 0 auto;
     }
   }
 
-  /* Modal */
+  /* ===== Modal：可愛奶茶風 ===== */
   .modal {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center;
     z-index: 9999;
   }
   .modal-content {
-    background: #fff; padding: 20px; border-radius: 12px;
-    width: 90%; max-width: 550px;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+    background: radial-gradient(circle at top,#fffaf4,#f7ecde);
+    padding: 18px 18px 16px;
+    border-radius: 18px;
+    width: 92%; max-width: 540px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    border: 1px solid var(--nc-border);
   }
-  .modal-content h3 { margin-top: 0; color: #8a6e45; }
-  .modal-content p { margin: 8px 0; }
+  .modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 6px;
+    color: var(--nc-text-main);
+    font-weight: 800;
+    font-size: 1.1rem;
+    display:flex;
+    align-items:center;
+    gap:.4rem;
+  }
+  .modal-content h3::before{
+    content:"🍰";
+  }
+  .modal-content p {
+    margin: 4px 0;
+    color: var(--nc-text-sub);
+    font-size: 14px;
+  }
 
   .fee-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px 10px;
-    margin: 10px 0;
+    gap: 10px 8px;
+    margin: 8px 0 4px;
   }
   .fee-item {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 8px 9px;
+    border: 1px dashed var(--nc-border);
+    border-radius: 12px;
+    padding: 6px 8px;
     background: #fffdf8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
   }
   .fee-item-title {
-    font-weight: bold;
-    color: #5e4b2d;
+    font-weight: 600;
+    color: var(--nc-text-main);
     display: flex;
     justify-content: space-between;
     margin-bottom: 3px;
-    font-size: 13px;
+    font-size: 12px;
+  }
+  .fee-item-title::before{
+    content:"•";
+    margin-right:4px;
+    color: var(--nc-accent-deep);
   }
   .fee-item-note {
-    font-size: 12px;
-    color: #888;
+    font-size: 11px;
+    color: var(--nc-text-sub);
     line-height: 1.4;
   }
 
   #feeDetailsToggle {
-    margin-top: 10px;
+    margin-top: 8px;
     cursor: pointer;
-    color: #8a6e45;
+    color: var(--nc-accent-deep);
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
   }
   #feeDetailsContent {
     display: none;
   }
+
+@media(max-width:768px){
+  .modal-content{
+    padding:16px 14px 14px;
+  }
+  .fee-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 手機仍然維持兩排 */
+    column-gap:6px;
+    row-gap:8px;
+  }
+  .fee-item{
+    padding:5px 6px;
+  }
+  .fee-item-title{
+    font-size:11px;
+  }
+  .fee-item-note{
+    font-size:10px;
+  }
+}
+
 </style>
 
 <div class="loan-wrapper">
   <h2>貸款月付款試算工具</h2>
 
+  <!-- ① 稅費 -->
   <div class="loan-card">
     <div class="loan-section-title">① 稅費相關（可不填）</div>
     <div class="input-group-line">
@@ -246,6 +385,7 @@
     </div>
   </div>
 
+  <!-- ② 價格區間 -->
   <div class="loan-card">
     <div class="loan-section-title">② 價格區間</div>
     <div class="input-group-line">
@@ -265,20 +405,40 @@
     </div>
   </div>
 
+  <!-- ③ 貸款條件 -->
   <div class="loan-card">
     <div class="loan-section-title">③ 貸款條件</div>
 
     <div class="input-group-line">
-      <label style="white-space: nowrap;">貸款成數：</label>
-      <label><input type="checkbox" class="loanRatio" value="40">4成</label>
-      <label><input type="checkbox" class="loanRatio" value="45">45成</label>
-      <label><input type="checkbox" class="loanRatio" value="50">5成</label>
-      <label><input type="checkbox" class="loanRatio" value="55">55成</label>
-      <label><input type="checkbox" class="loanRatio" value="60">6成</label>
-      <label><input type="checkbox" class="loanRatio" value="65">65成</label>
-      <label><input type="checkbox" class="loanRatio" value="70">7成</label>
-      <label><input type="checkbox" class="loanRatio" value="75" checked>75成</label>
-      <label><input type="checkbox" class="loanRatio" value="80" checked>8成</label>
+      <label style="white-space: nowrap; font-weight:600;">貸款成數：</label>
+      <div class="loan-chip-group">
+        <input type="checkbox" class="loanRatio" id="ratio40" value="40">
+        <label for="ratio40" class="loan-chip">4成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio45" value="45">
+        <label for="ratio45" class="loan-chip">45成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio50" value="50">
+        <label for="ratio50" class="loan-chip">5成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio55" value="55">
+        <label for="ratio55" class="loan-chip">55成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio60" value="60">
+        <label for="ratio60" class="loan-chip">6成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio65" value="65">
+        <label for="ratio65" class="loan-chip">65成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio70" value="70">
+        <label for="ratio70" class="loan-chip">7成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio75" value="75" checked>
+        <label for="ratio75" class="loan-chip">75成</label>
+
+        <input type="checkbox" class="loanRatio" id="ratio80" value="80" checked>
+        <label for="ratio80" class="loan-chip">8成</label>
+      </div>
     </div>
 
     <div class="input-group-line">
@@ -288,10 +448,17 @@
     </div>
 
     <div class="input-group-line">
-      <label>年限：</label>
-      <label><input type="checkbox" class="years" value="20">20年</label>
-      <label><input type="checkbox" class="years" value="30" checked>30年</label>
-      <label><input type="checkbox" class="years" value="40" checked>40年</label>
+      <label style="white-space: nowrap; font-weight:600;">年限：</label>
+      <div class="loan-chip-group">
+        <input type="checkbox" class="years" id="year20" value="20">
+        <label for="year20" class="loan-chip">20年</label>
+
+        <input type="checkbox" class="years" id="year30" value="30" checked>
+        <label for="year30" class="loan-chip">30年</label>
+
+        <input type="checkbox" class="years" id="year40" value="40" checked>
+        <label for="year40" class="loan-chip">40年</label>
+      </div>
     </div>
 
     <div class="input-group-line">
@@ -303,6 +470,9 @@
 
   <div class="table-wrapper">
     <table id="resultTable" class="responsive-table"></table>
+  </div>
+  <div class="mt-2 text-muted small text-end">
+    💡 小提醒：點擊上方任一列，即可查看該總價的詳細費用試算。
   </div>
 </div>
 
@@ -316,7 +486,7 @@
     <div id="feeDetailsContent" class="fee-grid"></div>
 
     <p id="modalFeesTotal" style="font-weight: bold;"></p>
-    <p id="modalCostTotal" style="font-weight: bold; color: #8a6e45;"></p>
+    <p id="modalCostTotal" style="font-weight: bold; color: var(--nc-text-main);"></p>
     <p style="text-align: right;">
       <button class="loan-btn" style="margin-top:0;" onclick="document.getElementById('infoModal').style.display='none'">關閉</button>
     </p>
@@ -347,7 +517,6 @@ function calculate() {
     return;
   }
 
-  // 建 header + body
   let html = "<thead><tr><th>總價</th><th>貸款金額</th>";
   years.forEach(y => { html += `<th>${y}年月付</th>`; });
   if (showGrace) {
@@ -359,11 +528,9 @@ function calculate() {
     ratios.forEach(r => {
       const loanAmt = price * 10000 * r;
       const loanStr = `${Math.round(loanAmt/10000)}萬（${Math.round(r*100)}%）`;
-      const loanPercent = (r * 10);
-      const loanStrPercent = Number.isInteger(loanPercent) ? loanPercent.toString() : loanPercent.toFixed(1);
 
-      let row = `<tr>
-        <td><a href="#" onclick="showInfo(${price}, ${r});return false;">${price}萬</a></td>
+      let row = `<tr data-price="${price}" data-ratio="${r}">
+        <td>${price}萬</td>
         <td>${loanStr}</td>`;
 
       years.forEach(y => {
@@ -375,6 +542,7 @@ function calculate() {
         const gracePay = loanAmt * (rate / 12);
         row += `<td>${Math.round(gracePay).toLocaleString()}</td>`;
       }
+
       row += "</tr>";
       html += row;
     });
@@ -383,7 +551,14 @@ function calculate() {
   html += "</tbody>";
   table.innerHTML = html;
 
-  // 手機版：加上 data-label
+  Array.from(table.querySelectorAll("tbody tr")).forEach(tr => {
+    tr.addEventListener("click", () => {
+      const price = parseFloat(tr.dataset.price);
+      const ratio = parseFloat(tr.dataset.ratio);
+      showInfo(price, ratio);
+    });
+  });
+
   applyResponsiveLabels();
 }
 
@@ -496,7 +671,7 @@ function toggleFeeDetails() {
   }
 }
 
-/* ✅ 從網址帶入 minPrice / maxPrice，先清空再寫入，然後自動試算 */
+/* 從網址帶入 minPrice / maxPrice，先清空再寫入，然後自動試算 */
 window.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
 

@@ -84,7 +84,10 @@
         <li><a href="{{ item['地圖連結'] }}" class="btn" target="_blank">查看地圖</a></li>
       {% endif %}
       {% if item["網址"] %}
-        <li><a href="{{ item['網址'] }}" class="btn" target="_blank">前往物件網站</a></li>
+        <li><a href="{{ url_for('static', filename='sedm_pages/' ~ row.物件編號 ~ '.html') }}"
+              target="_blank"
+              style="text-decoration:none; color:inherit;">
+            </li>
       {% endif %}
     </ul>
   </div>

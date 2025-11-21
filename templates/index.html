@@ -257,7 +257,10 @@
       {% for row in featured_data %}
       {% set img = row.image_url|string if row.image_url else '' %}
       <div class="card me-3 shadow-sm border-0" style="min-width: 260px; flex: 0 0 auto; background: #fff; border-radius: 12px;">
-        <a href="{{ row.網址 or '#' }}" target="_blank" style="text-decoration:none; color:inherit;">
+        <a href="{{ url_for('static', filename='sedm_pages/' + row.物件編號 + '.html') }}"
+            target="_blank"
+            style="text-decoration:none; color:inherit;">
+
 
           <!-- 強銷卡片圖片：沒有圖就顯示 LOGO，背景透明 -->
           <img
