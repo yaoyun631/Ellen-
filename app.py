@@ -19,16 +19,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from dotenv import load_dotenv
 
-class Config:
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = "ellenmyhomie@gmail.com"
-    MAIL_PASSWORD = "aenarqcchvfyfmqn"  # 注意：不能用登入密碼，需要產生 App Password
-    MAIL_RECEIVER = "e.llen3212383@gmail.com"  # 你要接收通知的信箱
+load_dotenv() 
 
-    CONTACT_FILE = "data/contacts.json"
 
 def save_contact(name, phone, message):
     # 如果資料夾不存在先建立
@@ -57,74 +53,31 @@ def save_contact(name, phone, message):
         json.dump(contacts, f, ensure_ascii=False, indent=2)
 
 def send_email(name, phone, message_text):
-    print("=== MAIL CONFIG CHECK ===")
-    for k in ["MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_SERVER", "MAIL_PORT", "MAIL_USE_TLS", "MAIL_RECEIVER"]:
-        print(k, "=>", current_app.config.get(k))
 
-    """
-    回傳 True = 寄信成功
-         False = 寄信失敗
-    """
+    # ⚠️ 換成你自己的 Formspree 表單端點（非常重要）
+    FORM_ENDPOINT = "https://formspree.io/f/xjkzojnp"  # ←換成你自己的
+
+    # 寄信內容
+    payload = {
+        "姓名": name,
+        "電話": phone,
+        "內容": message_text,
+        "_subject": f"網站新預約 / 諮詢 - {name}",
+    }
+
     try:
-        conf = current_app.config
+        resp = requests.post(FORM_ENDPOINT, data=payload, timeout=10)
+        print("Formspree 回應代碼:", resp.status_code)
+        print("Formspree 回應內容:", resp.text[:200])
 
-        sender = conf["MAIL_USERNAME"]          # 你的 Gmail 帳號
-        receiver = conf.get("MAIL_RECEIVER")    # 要收信的信箱
-
-        # 如果沒設定 MAIL_RECEIVER，就直接寄回自己
-        if not receiver:
-            receiver = sender
-
-        subject = f"網站新預約 / 諮詢 - {name}"
-
-        body = (
-            f"來自 Ellen 帶你找家網站的預約表單：\n\n"
-            f"姓名：{name}\n"
-            f"電話：{phone}\n"
-            f"內容：\n{message_text}\n"
-        )
-
-        msg = MIMEMultipart()
-        msg["From"] = sender
-        msg["To"] = receiver
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain", "utf-8"))
-
-        mail_server = conf.get("MAIL_SERVER", "smtp.gmail.com")
-        mail_port   = conf.get("MAIL_PORT", 587)
-        use_tls     = conf.get("MAIL_USE_TLS", True)
-
-        print("=== send_email debug ===")
-        print("From:", sender)
-        print("To:", receiver)
-        print("Server:", mail_server, "Port:", mail_port, "TLS:", use_tls)
-
-        # 587 + starttls
-        server = smtplib.SMTP(mail_server, mail_port)
-        server.ehlo()
-        if use_tls:
-            server.starttls()
-            server.ehlo()
-        server.login(sender, conf["MAIL_PASSWORD"])
-
-        # sendmail 回傳 dict，如果空 dict 表示全部成功
-        resp = server.sendmail(sender, [receiver], msg.as_string())
-        server.quit()
-
-        print("sendmail response:", resp)
-
-        if resp == {}:
-            print("✅ Email sent successfully")
-            return True
-        else:
-            print("⚠️ Email send returned non-empty resp:", resp)
-            return False
+        # Formspree 成功狀態碼通常是 200 / 202
+        return resp.status_code in (200, 201, 202)
 
     except Exception as e:
-        print("❌ Email sending failed:", repr(e))
+        print("❌ Formspree 寄信失敗：", repr(e))
         return False
-    
-    
+
+
 
 def get_existing_images(house_id):
     base_url = f"https://hq.houseol.com.tw/images/pictures/H229{house_id}"
@@ -168,8 +121,6 @@ else:
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
 
-# ✅ 很重要：把 Config 載入到 app.config 裡
-app.config.from_object(Config)
 
 # 你原本的設定照放在後面
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
