@@ -10,4 +10,4 @@ Flask-SQLAlchemy==3.1.1
 Pillow==10.2.0
 psycopg2-binary
 schedule==1.1.0
-sendgrid
+firebase-admin==6.6.0

@@ -9,13 +9,46 @@ import json
 import time
 from uuid import uuid4
 
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# =========================
+#  Firebase / Firestore 初始化
+# =========================
+
+# 初始化 Firebase App（只初始化一次）
+if not firebase_admin._apps:
+    cred = None
+
+    # ① 優先讀取環境變數（給 Render 用）
+    cred_json = os.environ.get("FIREBASE_CREDENTIALS")
+    if cred_json:
+        cred = credentials.Certificate(json.loads(cred_json))
+    else:
+        # ② 本機開發：讀取專案裡的 serviceAccountKey.json
+        if os.path.exists("serviceAccountKey.json"):
+            cred = credentials.Certificate("serviceAccountKey.json")
+
+    if not cred:
+        raise RuntimeError("找不到 Firestore 憑證，請確認 FIREBASE_CREDENTIALS 或 serviceAccountKey.json")
+
+    firebase_admin.initialize_app(cred)
+
+# 全域 Firestore client
+db = firestore.client()
+
+# Firestore collection 名稱
+POSTS_COLLECTION = "posts"
 
 blog_bp = Blueprint('blog', __name__, template_folder='templates')
 
-posts = []
-POSTS_FILE = 'posts.json'
+# 只剩 folders 仍用 json 存本機
 FOLDERS_FILE = 'folders.json'
 
+
+# =========================
+#  權限檢查
+# =========================
 
 def login_required():
     if not session.get('logged_in'):
@@ -23,30 +56,97 @@ def login_required():
         return redirect(url_for('admin_login'))
     return None
 
-def load_posts():
-    global posts
-    if os.path.exists(POSTS_FILE):
-        with open(POSTS_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            for post in data:
-                post['created_at'] = datetime.fromisoformat(post['created_at'])
-            posts = data
+
+# =========================
+#  Firestore 文章存取工具
+# =========================
+
+def _doc_to_post(doc):
+    """把 Firestore Document 轉成 dict，並補上 id 欄位"""
+    data = doc.to_dict() or {}
+    data["id"] = doc.id
+    # 保險：確保 created_at 會有值
+    if "created_at" not in data:
+        data["created_at"] = datetime.now()
+    return data
 
 
-def save_posts():
-    with open(POSTS_FILE, 'w', encoding='utf-8') as f:
-        json.dump([
-            {**post, 'created_at': post['created_at'].isoformat()} for post in posts
-        ], f, ensure_ascii=False, indent=2)
+def get_all_posts():
+    """取得所有文章（依 created_at 由新到舊排序）"""
+    docs = (
+        db.collection(POSTS_COLLECTION)
+        .order_by("created_at", direction=firestore.Query.DESCENDING)
+        .stream()
+    )
+    return [_doc_to_post(d) for d in docs]
 
-load_posts()
+
+def get_post(post_id: str):
+    """取得單一文章"""
+    ref = db.collection(POSTS_COLLECTION).document(post_id)
+    doc = ref.get()
+    if not doc.exists:
+        return None
+    return _doc_to_post(doc)
+
+
+def create_post(title, content, image_filename, folder):
+    """新增文章"""
+    ref = db.collection(POSTS_COLLECTION).document()  # 自動產生 id
+    now = datetime.now()
+    data = {
+        "title": title,
+        "content": content,
+        "image": image_filename or "",
+        "folder": folder or "未分類",
+        "created_at": now,
+        "updated_at": now,
+    }
+    ref.set(data)
+    return ref.id
+
+
+def update_post(post_id, title=None, content=None, image_filename=None, folder=None, delete_image=False):
+    """更新文章"""
+    update_data = {"updated_at": datetime.now()}
+
+    if title is not None:
+        update_data["title"] = title
+    if content is not None:
+        update_data["content"] = content
+    if folder is not None:
+        update_data["folder"] = folder
+
+    if delete_image:
+        update_data["image"] = ""
+    elif image_filename is not None:
+        update_data["image"] = image_filename
+
+    db.collection(POSTS_COLLECTION).document(post_id).update(update_data)
+
+
+def delete_post_firestore(post_id):
+    """刪除文章"""
+    db.collection(POSTS_COLLECTION).document(post_id).delete()
+
+
+# =========================
+#  後台：文章列表
+# =========================
 
 @blog_bp.route('/admin/blog')
 def admin_blog():
     login = login_required()
     if login:
         return login
+
+    posts = get_all_posts()
     return render_template('admin/admin_blog.html', posts=posts)
+
+
+# =========================
+#  後台：新增文章
+# =========================
 
 @blog_bp.route('/admin/blog/new', methods=['GET', 'POST'])
 def new_post():
@@ -59,24 +159,23 @@ def new_post():
         content = request.form.get('content', '').strip()
         image = request.files.get('image')
         folder = request.form.get('folder', '未分類')
-        filename = ""
 
+        if not title or not content:
+            flash("標題與內容不能空白")
+            folders = load_folders()
+            return render_template('admin/new_post.html', folders=folders)
+
+        # 處理圖片上傳
+        filename = ""
         if image and image.filename:
             filename = secure_filename(image.filename)
             upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
             os.makedirs(upload_folder, exist_ok=True)
             image.save(os.path.join(upload_folder, filename))
 
-        post = {
-            'id': len(posts) + 1,
-            'title': title,
-            'content': content,
-            'image': filename,
-            'created_at': datetime.now(),
-            'folder': folder
-        }
-        posts.append(post)
-        save_posts()
+        # 存到 Firestore
+        create_post(title, content, filename, folder)
+
         flash("文章新增成功")
         return redirect(url_for('blog.admin_blog'))
 
@@ -84,15 +183,21 @@ def new_post():
     return render_template('admin/new_post.html', folders=folders)
 
 
+# =========================
+#  後台：編輯文章
+# =========================
 
-
-@blog_bp.route('/admin/blog/edit/<int:post_id>', methods=['GET', 'POST'])
+@blog_bp.route('/admin/blog/edit/<post_id>', methods=['GET', 'POST'])
 def edit_post(post_id):
+    """
+    注意：這裡把 <int:post_id> 改成 <post_id>，
+    因為 Firestore 的 doc id 是字串。
+    """
     login = login_required()
     if login:
         return login
 
-    post = next((p for p in posts if p['id'] == post_id), None)
+    post = get_post(post_id)
     if not post:
         flash("找不到文章")
         return redirect(url_for('blog.admin_blog'))
@@ -100,31 +205,40 @@ def edit_post(post_id):
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         content = request.form.get('content', '').strip()
-        folder = request.form.get('folder', '未分類')  # ✅ 新增這行
+        folder = request.form.get('folder', '未分類')
         image = request.files.get('image')
-        delete_image = request.form.get('delete_image')
+        delete_image_flag = request.form.get('delete_image') == 'on'
 
-        if title:
-            post['title'] = title
-        if content:
-            post['content'] = content
-        post['folder'] = folder  # ✅ 寫入新的分類
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
+        os.makedirs(upload_folder, exist_ok=True)
 
-        if delete_image == 'on' and post['image']:
-            upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
-            image_path = os.path.join(upload_folder, post['image'])
-            if os.path.exists(image_path):
-                os.remove(image_path)
-            post['image'] = ''
+        new_filename = None
 
+        # 刪除舊圖片
+        if delete_image_flag and post.get('image'):
+            old_path = os.path.join(upload_folder, post['image'])
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
+            new_filename = ""  # Firestore 裡會被設成空字串
+
+        # 上傳新圖片
         if image and image.filename:
             filename = secure_filename(image.filename)
-            upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
-            os.makedirs(upload_folder, exist_ok=True)
             image.save(os.path.join(upload_folder, filename))
-            post['image'] = filename
+            new_filename = filename
 
-        save_posts()
+        update_post(
+            post_id,
+            title=title or post.get("title"),
+            content=content or post.get("content"),
+            folder=folder,
+            image_filename=new_filename,
+            delete_image=delete_image_flag
+        )
+
         flash("文章已更新")
         return redirect(url_for('blog.admin_blog'))
 
@@ -132,17 +246,35 @@ def edit_post(post_id):
     return render_template('admin/edit_post.html', post=post, folders=folders)
 
 
-@blog_bp.route('/admin/blog/delete/<int:post_id>', methods=['POST'])
+# =========================
+#  後台：刪除文章
+# =========================
+
+@blog_bp.route('/admin/blog/delete/<post_id>', methods=['POST'])
 def delete_post(post_id):
     login = login_required()
     if login:
         return login
 
-    global posts
-    posts = [p for p in posts if p['id'] != post_id]
-    save_posts()
+    # 先抓出來刪圖片
+    post = get_post(post_id)
+    if post and post.get("image"):
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
+        image_path = os.path.join(upload_folder, post['image'])
+        if os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+            except Exception:
+                pass
+
+    delete_post_firestore(post_id)
     flash("文章已刪除")
     return redirect(url_for('blog.admin_blog'))
+
+
+# =========================
+#  CKEditor 圖片上傳（維持原本邏輯）
+# =========================
 
 @blog_bp.route('/admin/blog/upload-image', methods=['POST'])
 def upload_image():
@@ -161,37 +293,42 @@ def upload_image():
     url = url_for('static', filename='uploads/' + filename)
     return {"uploaded": True, "url": url}
 
-# 🔹 前台單篇文章頁面
-@blog_bp.route('/post/<int:post_id>')
+
+# =========================
+#  前台：單篇文章頁面
+# =========================
+
+@blog_bp.route('/post/<post_id>')
 def show_post(post_id):
-    post = next((p for p in posts if p['id'] == post_id), None)
+    post = get_post(post_id)
     if not post:
         flash("找不到文章")
         return redirect(url_for('blog.index'))
     return render_template('blog/show_post.html', post=post)
 
 
-@blog_bp.route('/post/<int:post_id>/detail')
+@blog_bp.route('/post/<post_id>/detail')
 def view_post(post_id):
-    post = next((p for p in posts if p['id'] == post_id), None)
+    post = get_post(post_id)
     if not post:
         flash("找不到文章")
         return redirect(url_for('blog.index'))
     return render_template('blog/post_detail.html', post=post)
 
+
+# =========================
+#  前台：Blog 首頁（含 folder & profile）
+# =========================
+
 @blog_bp.route("/blog")
 def index():
     folder = request.args.get("folder", "")  # ?folder=分類名稱
-    all_posts = posts  # 你原本的全域 posts
+    all_posts = get_all_posts()
     folders = load_folders()
 
     # 依照選擇的分類過濾文章
     if folder:
-        # 下面這段如果你的 post 是物件就用 getattr，若是 dict 用 p.get
-        try:
-            filtered_posts = [p for p in all_posts if getattr(p, "folder", None) == folder]
-        except Exception:
-            filtered_posts = [p for p in all_posts if p.get("folder") == folder]
+        filtered_posts = [p for p in all_posts if p.get("folder") == folder]
     else:
         filtered_posts = all_posts
 
@@ -204,7 +341,7 @@ def index():
         with open(profile_path, "r", encoding="utf-8") as f:
             profile = json.load(f)
     else:
-        # 沒有檔案時的預設值（跟 blog_profile 預設要一致）
+        # 沒有檔案時的預設值
         profile = {
             "avatar_filename": None,
             "avatar_pos_x": 0,
@@ -217,7 +354,7 @@ def index():
             "about_text": "太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。"
         }
 
-    # 🔹 大頭貼路徑（給 template 用 url_for('static', filename=avatar_url_path)）
+    # 🔹 大頭貼路徑
     if profile.get("avatar_filename"):
         avatar_url_path = f"images/blog/{profile['avatar_filename']}"
     else:
@@ -233,11 +370,9 @@ def index():
     )
 
 
-
-
-
-
-FOLDERS_FILE = 'folders.json'
+# =========================
+#  分類（仍用 JSON 本機）
+# =========================
 
 def load_folders():
     if os.path.exists(FOLDERS_FILE):
@@ -245,9 +380,11 @@ def load_folders():
             return json.load(f)
     return []
 
+
 def save_folders(folders):
     with open(FOLDERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(folders, f, ensure_ascii=False, indent=2)
+
 
 @blog_bp.route('/admin/folders', methods=['GET'])
 def folder_manager():
@@ -256,6 +393,7 @@ def folder_manager():
         return login
     folders = load_folders()
     return render_template('admin/folder_manager.html', folders=folders)
+
 
 @blog_bp.route('/admin/folders/add', methods=['POST'])
 def add_folder():
@@ -270,6 +408,7 @@ def add_folder():
             save_folders(folders)
     return redirect(url_for('blog.folder_manager'))
 
+
 @blog_bp.route('/admin/folders/delete/<folder_name>', methods=['POST'])
 def delete_folder(folder_name):
     login = login_required()
@@ -280,6 +419,7 @@ def delete_folder(folder_name):
         folders.remove(folder_name)
         save_folders(folders)
     return redirect(url_for('blog.folder_manager'))
+
 
 @blog_bp.route('/admin/folders/move-up/<folder_name>', methods=['POST'])
 def move_folder_up(folder_name):
@@ -294,6 +434,7 @@ def move_folder_up(folder_name):
             save_folders(folders)
     return redirect(url_for('blog.folder_manager'))
 
+
 @blog_bp.route('/admin/folders/move-down/<folder_name>', methods=['POST'])
 def move_folder_down(folder_name):
     login = login_required()
@@ -306,6 +447,11 @@ def move_folder_down(folder_name):
             folders[index], folders[index + 1] = folders[index + 1], folders[index]
             save_folders(folders)
     return redirect(url_for('blog.folder_manager'))
+
+
+# =========================
+#  Blog Profile（沿用原本邏輯）
+# =========================
 
 @blog_bp.route("/blog/profile", methods=["GET", "POST"])
 def blog_profile():
@@ -397,18 +543,15 @@ def blog_profile():
             json.dump(profile, f, ensure_ascii=False, indent=2)
 
         flash("已更新部落格個人資料，首頁已套用最新設定。", "success")
-        # 存完直接回到部落格首頁
         return redirect(url_for("blog.index"))
 
     # === GET：顯示編輯畫面 ===
-    # 讓 template 知道現在大頭貼的路徑
     avatar_filename = profile.get("avatar_filename")
     if avatar_filename:
         avatar_url_path = f"images/blog/{avatar_filename}"
     else:
         avatar_url_path = "images/blog/default_avatar.png"
 
-    # 保證 profile.tags 一定是 list（避免舊資料是字串）
     if isinstance(profile.get("tags"), str):
         profile["tags"] = [t.strip() for t in profile["tags"].split(",") if t.strip()]
 
@@ -417,5 +560,3 @@ def blog_profile():
         profile=profile,
         avatar_url_path=avatar_url_path,
     )
-
-

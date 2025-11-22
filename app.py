@@ -19,11 +19,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-from dotenv import load_dotenv
 
-load_dotenv() 
 
 
 def save_contact(name, phone, message):
@@ -138,8 +134,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # 部落格
-posts = []
-blog_bp.posts = posts
 app.register_blueprint(blog_bp, url_prefix='/blog')
 
 # 常數
