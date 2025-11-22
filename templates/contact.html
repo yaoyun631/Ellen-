@@ -2,39 +2,311 @@
 {% block title %}預約看房 / 諮詢{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-  <h2>預約看房 / 諮詢</h2>
+
+<style>
+  :root {
+    --tea-bg: #f6f1ea;
+    --tea-panel: #fffdf8;
+    --tea-border: #e4d6c6;
+    --tea-text: #4a3f35;
+    --tea-accent: #d3a378;
+    --tea-accent-dark: #b7855c;
+    --tea-muted: #9b8a78;
+  }
+
+  body {
+    background-color: var(--tea-bg);
+    font-family: "微軟正黑體", sans-serif;
+  }
+
+  .contact-wrapper {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-top: 24px;
+    padding-bottom: 32px;
+  }
+
+  .contact-title {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--tea-text);
+    margin-bottom: 6px;
+  }
+
+  .contact-subtitle {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--tea-muted);
+    margin-bottom: 18px;
+    line-height: 1.4;
+  }
+
+  .contact-info-card {
+    background: var(--tea-panel);
+    border-radius: 16px;
+    border: 1px solid var(--tea-border);
+    padding: 18px 18px 16px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    height: 100%;
+    font-size: 0.9rem;
+    color: #6b5946;
+  }
+
+  .info-title {
+    font-weight: 700;
+    color: var(--tea-text);
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .info-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f2decb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .info-text-main {
+    font-weight: 600;
+    color: var(--tea-text);
+  }
+
+  .info-text-sub {
+    font-size: 0.82rem;
+    color: var(--tea-muted);
+  }
+
+  .quick-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border: 1px solid var(--tea-accent);
+    color: var(--tea-accent-dark);
+    text-decoration: none;
+    margin-top: 6px;
+  }
+
+  .quick-link-btn:hover {
+    background: var(--tea-accent);
+    color: #fff;
+  }
+
+  .contact-form-card {
+    background: var(--tea-panel);
+    border-radius: 16px;
+    border: 1px solid var(--tea-border);
+    padding: 18px 18px 20px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+
+  .form-label-custom {
+    display: block;
+    margin: 10px 0 4px;
+    color: var(--tea-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .form-control-custom,
+  .form-textarea-custom {
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid #d4c4af;
+    background: #fff;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+
+  .form-textarea-custom {
+    min-height: 90px;
+    resize: vertical;
+  }
+
+  .contact-btn {
+    margin-top: 14px;
+    background-color: var(--tea-accent);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .contact-btn:hover {
+    background-color: var(--tea-accent-dark);
+  }
+
+  .badge-topic {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #f4e1ce;
+    color: #7b5b31;
+    font-size: 0.75rem;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+
+  .badge-topic.active {
+    background: var(--tea-accent);
+    color: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .contact-wrapper {
+      padding-inline: 4px;
+    }
+    .contact-info-card,
+    .contact-form-card {
+      padding: 14px 14px 16px;
+    }
+  }
+</style>
+
+<div class="contact-wrapper">
+  <h2 class="contact-title">預約看房 / 諮詢</h2>
+  <div class="contact-subtitle">
+    想看哪一間房、想問貸款、租屋或海線生活都可以。<br>
+    填完後 Ellen 會用電話或 LINE 和你確認細節。
+  </div>
 
   {% if success_message %}
   <div class="alert alert-success">{{ success_message }}</div>
   {% endif %}
 
-  <form method="POST" action="{{ url_for('contact') }}">
-    <div class="mb-3">
-      <label class="form-label">姓名</label>
-      <input type="text" class="form-control" name="name" required
-        value="{{ form_data.name if form_data else '' }}">
-    </div>
-    <div class="mb-3">
-      <label class="form-label">電話</label>
-      <input type="tel" class="form-control" name="phone" required
-        value="{{ form_data.phone if form_data else '' }}">
-    </div>
-    <div class="mb-3">
-      <label class="form-label">想諮詢的內容</label>
-      <textarea class="form-control" name="message" rows="4" required>{{ form_data.message if form_data else '' }}</textarea>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">驗證碼</label>
-      <div class="d-flex align-items-center">
-        <img src="{{ url_for('captcha_image') }}" alt="驗證碼" class="mr-2" style="height: 40px;" onclick="this.src='{{ url_for('captcha_image') }}?'+Math.random();">
-        <input type="text" class="form-control" name="captcha_input" required placeholder="請輸入圖中數字" style="max-width: 150px;">
+  {% if error_message %}
+  <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- 說明 -->
+    <div class="col-md-4">
+      <div class="contact-info-card">
+        <div class="info-title">你可以怎麼用這個表單？</div>
+
+        <div class="info-row">
+          <div class="info-icon">🏡</div>
+          <div>
+            <div class="info-text-main">預約實際帶看</div>
+            <div class="info-text-sub">填上物件連結 or 區域、預算，我幫你整理幾間適合的。</div>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-icon">💬</div>
+          <div>
+            <div class="info-text-main">諮詢房產 / 房貸</div>
+            <div class="info-text-sub">買房、租屋前的問題都可以先聊聊。</div>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-icon">📞</div>
+          <div>
+            <div class="info-text-main">也可以直接聯絡我</div>
+            <div class="info-text-sub">
+              0909-663-034<br>LINE：doit3034
+            </div>
+          </div>
+        </div>
+
+        <a href="https://line.me/ti/p/A1CNJf_2-L" target="_blank" class="quick-link-btn">
+          <span>加 LINE 直接聊聊</span> ➡
+        </a>
       </div>
-      {% if error_message %}
-      <small class="text-danger">{{ error_message }}</small>
-      {% endif %}
     </div>
-    <button type="submit" class="btn btn-primary">送出</button>
-  </form>
+
+    <!-- 表單 -->
+    <div class="col-md-8">
+      <div class="contact-form-card">
+        <form method="POST" action="{{ url_for('contact') }}">
+
+          {{ csrf_token() if csrf_token is defined }}
+
+          <label class="form-label-custom">姓名</label>
+          <input
+            type="text"
+            class="form-control-custom"
+            name="name"
+            required
+            placeholder="例：王小明"
+            value="{{ form_data.name if form_data else '' }}"
+          >
+
+          <label class="form-label-custom">電話</label>
+          <input
+            type="tel"
+            class="form-control-custom"
+            name="phone"
+            required
+            placeholder="例：0912XXXXXX"
+            value="{{ form_data.phone if form_data else '' }}"
+          >
+
+          <label class="form-label-custom">想諮詢的內容</label>
+
+          <div id="topicBadges" class="mb-2">
+            <span class="badge-topic" data-prefix="[想看房] ">想看房</span>
+            <span class="badge-topic" data-prefix="[買房諮詢] ">買房諮詢</span>
+            <span class="badge-topic" data-prefix="[租屋諮詢] ">租屋諮詢</span>
+            <span class="badge-topic" data-prefix="[房貸 / 資金規劃] ">房貸 / 資金規劃</span>
+          </div>
+
+          <textarea
+            class="form-textarea-custom"
+            name="message"
+            id="messageTextarea"
+            required
+            placeholder="可以填：預算、想要找的區域、房型條件、看到哪一間物件的連結…"
+          >{{ form_data.message if form_data else '' }}</textarea>
+
+          <button type="submit" class="contact-btn">送出預約 / 諮詢</button>
+
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  // 小標籤 → 在 message 前加 prefix
+  const badges = document.querySelectorAll('.badge-topic');
+  const messageTextarea = document.getElementById('messageTextarea');
+
+  badges.forEach(badge => {
+    badge.addEventListener('click', () => {
+      const prefix = badge.dataset.prefix;
+      const current = messageTextarea.value;
+
+      badges.forEach(b => b.classList.remove('active'));
+      badge.classList.add('active');
+
+      if (!current.startsWith(prefix)) {
+        messageTextarea.value = prefix + current.replace(/^\[[^\]]+\]\s*/, '');
+      }
+
+      messageTextarea.focus();
+    });
+  });
+</script>
+
 {% endblock %}

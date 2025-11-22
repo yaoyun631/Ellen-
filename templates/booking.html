@@ -3,103 +3,314 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>預約時段</title>
+  <title>預約時段｜Ellen 帶你找家</title>
   <style>
+    :root {
+      --tea-bg: #f6f1ea;
+      --tea-panel: #fffdf8;
+      --tea-border: #e4d6c6;
+      --tea-text: #4a3f35;
+      --tea-accent: #d3a378;
+      --tea-accent-dark: #b7855c;
+      --tea-muted: #9b8a78;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: "微軟正黑體", sans-serif;
-      background-color: #f7f7f7;
-      padding: 20px;
+      background-color: var(--tea-bg);
+      margin: 0;
+      padding: 16px;
+      color: var(--tea-text);
     }
+
+    .booking-wrapper {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
     h1 {
       text-align: center;
-      color: #CABAA1;
+      color: var(--tea-text);
+      margin-bottom: 4px;
+      font-size: 1.7rem;
+      font-weight: 800;
     }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--tea-muted);
+      margin-bottom: 18px;
+    }
+
+    /* 上方提醒卡片 */
+    .notice-card {
+      background: var(--tea-panel);
+      border-radius: 12px;
+      border: 1px solid var(--tea-border);
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      color: var(--tea-muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .notice-dot {
+      font-size: 1.1rem;
+      line-height: 1.1;
+    }
+
+    /* 日期區塊 */
     .day-block {
-      margin-bottom: 30px;
-      background-color: white;
-      padding: 15px;
-      border: 1px solid #CABAA1;
-      border-radius: 10px;
+      margin-bottom: 16px;
+      background-color: var(--tea-panel);
+      padding: 12px 14px 10px;
+      border: 1px solid var(--tea-border);
+      border-radius: 12px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.04);
+    }
+    .day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
     .day-label {
-      font-weight: bold;
-      color: #CABAA1;
-      margin-bottom: 10px;
-      font-size: 18px;
+      font-weight: 700;
+      color: var(--tea-text);
+      font-size: 1rem;
     }
+    .day-tag {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f4e5d5;
+      color: #8b6844;
+    }
+
     .time-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
     .time-slot {
-      background-color: white;
-      border: 2px solid #CABAA1;
-      border-radius: 8px;
-      padding: 8px 12px;
+      background-color: #fff;
+      border: 1px solid var(--tea-border);
+      border-radius: 999px;
+      padding: 6px 12px;
       cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--tea-text);
+      transition: 0.15s;
+      min-width: 70px;
+      text-align: center;
     }
     .time-slot:hover {
-      background-color: #CABAA1;
-      color: white;
+      background-color: #f6e3d2;
+      border-color: var(--tea-accent);
     }
-    .selected {
-      background-color: #CABAA1;
-      color: white;
+    .time-slot.selected {
+      background-color: var(--tea-accent);
+      color: #fff;
+      border-color: var(--tea-accent);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
+    .time-slot.unavailable {
+      background-color: #ece2d7;
+      color: #b0a193;
+      border-style: dashed;
+      cursor: not-allowed;
+    }
+
+    /* 表單區 */
     .form-section {
-      margin-top: 30px;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      border: 1px solid #CABAA1;
+      margin-top: 20px;
+      background: var(--tea-panel);
+      padding: 16px 16px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--tea-border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
+    .form-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+      color: var(--tea-text);
+    }
+    .form-sub {
+      font-size: 0.82rem;
+      color: var(--tea-muted);
+      margin-bottom: 12px;
+    }
+
     label {
       display: block;
-      margin: 10px 0 5px;
-      color: #333;
+      margin: 10px 0 4px;
+      color: var(--tea-text);
+      font-size: 0.9rem;
     }
-    input[type="text"], input[type="tel"] {
+    input[type="text"],
+    input[type="tel"],
+    textarea {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #CCC;
-      border-radius: 6px;
+      padding: 9px 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: #fff;
     }
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 0.87rem;
+    }
+    .radio-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--tea-border);
+      background: #fff;
+      cursor: pointer;
+    }
+    .radio-pill input {
+      margin: 0;
+    }
+
+    .selected-time-summary {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: var(--tea-accent-dark);
+      font-weight: 600;
+    }
+
     button {
-      margin-top: 15px;
-      background-color: #CABAA1;
+      margin-top: 14px;
+      background-color: var(--tea-accent);
       border: none;
       color: white;
       padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 16px;
+      border-radius: 999px;
+      font-size: 0.95rem;
       cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: var(--tea-accent-dark);
+    }
+
+    .small-note {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: var(--tea-muted);
+    }
+
+    /* 手機 RWD */
+    @media (max-width: 600px) {
+      body {
+        padding: 12px;
+      }
+      .day-block {
+        padding: 10px 10px 8px;
+      }
+      .time-slot {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>預約時段</h1>
+  <div class="booking-wrapper">
+    <h1>預約看房 / 諮詢時段</h1>
+    <div class="subtitle">請選擇未來 7 天中一個適合你的時段，Ellen 會再與你確認預約內容。</div>
 
-  <!-- 時段顯示容器 -->
-  <div id="scheduleContainer"></div>
+    <div class="notice-card">
+      <div class="notice-dot">📌</div>
+      <div>
+        系統顯示可選的為「暫時可預約」時段，送出表單後將以 Ellen 的回覆為準。<br>
+        若你有特別緊急或指定物件，也歡迎在備註中說明。
+      </div>
+    </div>
 
-  <!-- 預約表單 -->
-  <form class="form-section" id="bookingForm">
-    <label for="name">姓名</label>
-    <input type="text" id="name" name="name" required />
+    <!-- 時段顯示容器 -->
+    <div id="scheduleContainer"></div>
 
-    <label for="phone">電話</label>
-    <input type="tel" id="phone" name="phone" required />
+    <!-- 預約表單 -->
+    <form class="form-section" id="bookingForm">
+      <div class="form-title">填寫聯絡方式</div>
+      <div class="form-sub">留下你的基本資料，方便 Ellen 與你確認預約與物件需求。</div>
 
-    <input type="hidden" id="selectedSlot" name="time" />
+      <label for="name">姓名</label>
+      <input type="text" id="name" name="name" required placeholder="例：王小明" />
 
-    <button type="submit">確認預約</button>
-  </form>
+      <label for="phone">電話</label>
+      <input
+        type="tel"
+        id="phone"
+        name="phone"
+        required
+        placeholder="例：0912XXXXXX"
+        pattern="09\d{8}"
+        title="請填寫 09 開頭的 10 碼手機號碼"
+      />
+
+      <label>預約類型</label>
+      <div class="radio-group">
+        <label class="radio-pill">
+          <input type="radio" name="type" value="看房" checked>
+          <span>看房 / 帶看</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="type" value="租屋諮詢">
+          <span>租屋諮詢</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="type" value="房貸諮詢">
+          <span>房貸諮詢</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="type" value="線上聊聊">
+          <span>線上聊聊</span>
+        </label>
+      </div>
+
+      <label for="note">想說的話 / 指定物件（選填）</label>
+      <textarea id="note" name="note" placeholder="例：想了解沙鹿○○社區三房；或填上你在 Ellen 網站上看到的物件連結。"></textarea>
+
+      <input type="hidden" id="selectedSlot" name="time" />
+
+      <div id="selectedSummary" class="selected-time-summary" style="display:none;">
+        你目前選擇的時段：<span id="selectedText"></span>
+      </div>
+
+      <button type="submit">送出預約</button>
+      <div class="small-note">
+        送出後頁面會顯示預約結果，如有重複預約或時段已被占用，系統會提醒你重新選擇。
+      </div>
+    </form>
+  </div>
 
   <script>
     const scheduleContainer = document.getElementById('scheduleContainer');
     const selectedSlotInput = document.getElementById('selectedSlot');
+    const selectedSummary = document.getElementById('selectedSummary');
+    const selectedText = document.getElementById('selectedText');
 
+    // 可預約時段
     const timeSlots = [
       "10:30", "11:30", "12:30", "13:30",
       "14:00", "14:30", "15:30", "16:30",
@@ -109,6 +320,18 @@
     const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
     const today = new Date();
 
+    // 👉 預約過的時段（如果有從後端傳，可在 template 注入）
+    // 例如在 Flask 裡：const reservedSlots = {{ reserved_slots|tojson|safe }};
+    const reservedSlots = window.reservedSlots || [];  // 預設空陣列，不會壞掉
+
+    function formatDisplay(dateObj, time) {
+      const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const d = String(dateObj.getDate()).padStart(2, "0");
+      const w = weekdays[dateObj.getDay()];
+      return `${m}/${d} (${w}) ${time}`;
+    }
+
+    // 產生未來 7 天的時段表
     for (let i = 0; i < 7; i++) {
       const current = new Date(today);
       current.setDate(today.getDate() + i);
@@ -119,10 +342,20 @@
       const dayBlock = document.createElement('div');
       dayBlock.className = 'day-block';
 
+      const header = document.createElement('div');
+      header.className = 'day-header';
+
       const label = document.createElement('div');
       label.className = 'day-label';
       label.textContent = displayDate;
-      dayBlock.appendChild(label);
+
+      const tag = document.createElement('div');
+      tag.className = 'day-tag';
+      tag.textContent = (i === 0) ? "今天" : (i === 1 ? "明天" : "可預約");
+
+      header.appendChild(label);
+      header.appendChild(tag);
+      dayBlock.appendChild(header);
 
       const row = document.createElement('div');
       row.className = 'time-row';
@@ -131,12 +364,30 @@
         const btn = document.createElement('div');
         btn.className = 'time-slot';
         btn.textContent = time;
-        btn.dataset.datetime = `${dateStr} ${time}`;
+
+        const datetimeStr = `${dateStr} ${time}`;
+        btn.dataset.datetime = datetimeStr;
+
+        // 1. 已被預約 → 灰掉
+        if (reservedSlots.includes(datetimeStr)) {
+          btn.classList.add('unavailable');
+        }
+
+        // 2. 今天的已過去時段 → 灰掉（避免預約已過去時間）
+        const slotDateTime = new Date(`${dateStr}T${time}:00`);
+        if (i === 0 && slotDateTime <= today) {
+          btn.classList.add('unavailable');
+        }
 
         btn.addEventListener('click', () => {
+          if (btn.classList.contains('unavailable')) return;
+
           document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
           btn.classList.add('selected');
-          selectedSlotInput.value = btn.dataset.datetime;
+          selectedSlotInput.value = datetimeStr;
+
+          selectedText.textContent = formatDisplay(current, time);
+          selectedSummary.style.display = 'block';
         });
 
         row.appendChild(btn);
@@ -152,24 +403,36 @@
       const name = document.getElementById('name').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const time = selectedSlotInput.value;
+      const type = (document.querySelector('input[name="type"]:checked') || {}).value || '';
+      const note = document.getElementById('note').value.trim();
 
       if (!time) {
-        alert("請選擇一個時段");
+        alert("請先選擇一個預約時段 😊");
         return;
       }
 
-      const res = await fetch('/reserve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ time, name, phone })
-      });
+      if (!name || !phone) {
+        alert("請填寫姓名與電話");
+        return;
+      }
 
-      if (res.ok) {
-        alert("預約成功！");
-        location.reload();
-      } else {
-        alert("時段已被預約，請重新選擇！");
-        location.reload();
+      try {
+        const res = await fetch('/reserve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ time, name, phone, type, note })
+        });
+
+        if (res.ok) {
+          alert("預約成功！Ellen 會盡快與你聯繫確認 🙌");
+          location.reload();
+        } else {
+          alert("這個時段剛好被預約走了，請再選一個時段試試看 🥹");
+          location.reload();
+        }
+      } catch (err) {
+        console.error(err);
+        alert("系統暫時忙碌，請稍後再試或改用 LINE 與 Ellen 聯繫 🙏");
       }
     });
   </script>

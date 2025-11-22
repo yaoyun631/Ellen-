@@ -15,8 +15,116 @@ import pandas as pd
 import sqlite3
 import requests
 import urllib.parse
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from flask import current_app
 
+class Config:
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = "ellenmyhomie@gmail.com"
+    MAIL_PASSWORD = "aenarqcchvfyfmqn"  # 注意：不能用登入密碼，需要產生 App Password
+    MAIL_RECEIVER = "e.llen3212383@gmail.com"  # 你要接收通知的信箱
 
+    CONTACT_FILE = "data/contacts.json"
+
+def save_contact(name, phone, message):
+    # 如果資料夾不存在先建立
+    os.makedirs("data", exist_ok=True)
+
+    # 如果檔案不存在就建立空 list
+    if not os.path.exists(CONTACT_FILE):
+        with open(CONTACT_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+
+    # 讀舊資料
+    with open(CONTACT_FILE, "r", encoding="utf-8") as f:
+        contacts = json.load(f)
+
+    # 新增一筆
+    contacts.append({
+        "name": name,
+        "phone": phone,
+        "message": message,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "status": "pending"
+    })
+
+    # 寫回去
+    with open(CONTACT_FILE, "w", encoding="utf-8") as f:
+        json.dump(contacts, f, ensure_ascii=False, indent=2)
+
+def send_email(name, phone, message_text):
+    print("=== MAIL CONFIG CHECK ===")
+    for k in ["MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_SERVER", "MAIL_PORT", "MAIL_USE_TLS", "MAIL_RECEIVER"]:
+        print(k, "=>", current_app.config.get(k))
+
+    """
+    回傳 True = 寄信成功
+         False = 寄信失敗
+    """
+    try:
+        conf = current_app.config
+
+        sender = conf["MAIL_USERNAME"]          # 你的 Gmail 帳號
+        receiver = conf.get("MAIL_RECEIVER")    # 要收信的信箱
+
+        # 如果沒設定 MAIL_RECEIVER，就直接寄回自己
+        if not receiver:
+            receiver = sender
+
+        subject = f"網站新預約 / 諮詢 - {name}"
+
+        body = (
+            f"來自 Ellen 帶你找家網站的預約表單：\n\n"
+            f"姓名：{name}\n"
+            f"電話：{phone}\n"
+            f"內容：\n{message_text}\n"
+        )
+
+        msg = MIMEMultipart()
+        msg["From"] = sender
+        msg["To"] = receiver
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        mail_server = conf.get("MAIL_SERVER", "smtp.gmail.com")
+        mail_port   = conf.get("MAIL_PORT", 587)
+        use_tls     = conf.get("MAIL_USE_TLS", True)
+
+        print("=== send_email debug ===")
+        print("From:", sender)
+        print("To:", receiver)
+        print("Server:", mail_server, "Port:", mail_port, "TLS:", use_tls)
+
+        # 587 + starttls
+        server = smtplib.SMTP(mail_server, mail_port)
+        server.ehlo()
+        if use_tls:
+            server.starttls()
+            server.ehlo()
+        server.login(sender, conf["MAIL_PASSWORD"])
+
+        # sendmail 回傳 dict，如果空 dict 表示全部成功
+        resp = server.sendmail(sender, [receiver], msg.as_string())
+        server.quit()
+
+        print("sendmail response:", resp)
+
+        if resp == {}:
+            print("✅ Email sent successfully")
+            return True
+        else:
+            print("⚠️ Email send returned non-empty resp:", resp)
+            return False
+
+    except Exception as e:
+        print("❌ Email sending failed:", repr(e))
+        return False
+    
+    
 
 def get_existing_images(house_id):
     base_url = f"https://hq.houseol.com.tw/images/pictures/H229{house_id}"
@@ -59,6 +167,11 @@ else:
 
 app = Flask(__name__)
 app.secret_key = "awsedfr123456"
+
+# ✅ 很重要：把 Config 載入到 app.config 裡
+app.config.from_object(Config)
+
+# 你原本的設定照放在後面
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'data')
 ALLOWED_EXTENSIONS_EXCEL = {'xls', 'xlsx'}
@@ -764,39 +877,42 @@ def save_contacts(contacts):
     with open(CONTACT_FILE, 'w', encoding='utf-8') as f:
         json.dump(contacts, f, ensure_ascii=False, indent=2)
 
-@app.route('/contact', methods=['GET', 'POST'])
+from flask import render_template, request, session
+# 記得上面要有 send_email, save_contact 的 import 或定義
+
+@app.route("/contact", methods=["GET", "POST"])
 def contact():
-    error_message = None
+    form_data = None
     success_message = None
+    error_message = None
 
-    if request.method == 'POST':
-        # 驗證碼檢查
-        user_captcha = request.form.get('captcha_input', '')
-        if user_captcha != str(session.get('captcha')):
-            error_message = "驗證碼錯誤，請重新輸入"
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        message = request.form.get("message", "").strip()
+
+        if not name or not phone or not message:
+            error_message = "請把姓名、電話和想諮詢內容都填寫完整喔！"
+            form_data = request.form
         else:
-            contacts = load_contacts()
-            new_contact = {
-                "name": request.form.get('name', ''),
-                "phone": request.form.get('phone', ''),
-                "message": request.form.get('message', ''),
-                "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                "status": "pending"  # 預設狀態
-            }
-            contacts.append(new_contact)
-            save_contacts(contacts)
-            success_message = "預約成功，感謝您的聯繫！"
+            # 1️⃣ 一樣先存到 JSON（你原來的函式）
+            save_contact(name, phone, message)
 
-    # 產生新驗證碼
-    captcha = random.randint(1000, 9999)
-    session['captcha'] = captcha
+            # 2️⃣ 嘗試寄 Email（這裡只給 3 個參數）
+            ok = send_email(name, phone, message)
+
+            if ok:
+                success_message = "已收到你的預約 / 諮詢，我會盡快與你聯繫 🙌"
+                form_data = None  # 清空表單
+            else:
+                error_message = "資料已送出，但寄信失敗（伺服器端有詳細錯誤訊息）。"
+                form_data = request.form
 
     return render_template(
-        'contact.html',
-        captcha=captcha,
-        error_message=error_message,
+        "contact.html",
+        form_data=form_data,
         success_message=success_message,
-        form_data=request.form if request.method == 'POST' else None
+        error_message=error_message,
     )
 
 

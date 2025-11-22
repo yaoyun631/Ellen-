@@ -2,18 +2,146 @@
 {% block title %}{{ post.title }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4" style="max-width: 900px;">
-  <h1>{{ post.title }}</h1>
-  <p class="text-muted">發表時間：{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
 
-  {% if post.image %}
-    <img src="{{ url_for('static', filename='uploads/' ~ post.image) }}" class="img-fluid mb-3">
-  {% endif %}
+<style>
+  :root {
+    --tea-bg: #f6f1ea;
+    --tea-panel: #fffdf8;
+    --tea-border: #e4d6c6;
+    --tea-text: #4a3f35;
+    --tea-accent: #d3a378;
+    --tea-accent-dark: #b7855c;
+  }
 
-  <div class="content">
-    {{ post.content|safe }}
+  body {
+    background: var(--tea-bg);
+  }
+
+  .post-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    margin-top: 22px;
+  }
+
+  /* 🔶 標題卡片 */
+  .post-header-card {
+    background: var(--tea-panel);
+    border: 1px solid var(--tea-border);
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: 0 5px 14px rgba(0,0,0,0.07);
+    margin-bottom: 22px;
+  }
+
+  .post-title {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--tea-text);
+    line-height: 1.35;
+    margin-bottom: 10px;
+  }
+
+  .post-meta {
+    font-size: 0.9rem;
+    color: #8b7a68;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  /* 🔶 文章封面圖 */
+  .post-image {
+    width: 100%;
+    border-radius: 14px;
+    object-fit: cover;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  /* 🔶 內容卡片 */
+  .post-content-card {
+    background: var(--tea-panel);
+    border: 1px solid var(--tea-border);
+    border-radius: 16px;
+    padding: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    margin-bottom: 26px;
+    font-size: 1.05rem;
+    line-height: 1.75;
+    color: #5a493a;
+  }
+
+  /* 文章內容內部的基本樣式優化 */
+  .post-content-card p {
+    margin-bottom: 1.1rem;
+  }
+  .post-content-card h2, .post-content-card h3 {
+    margin-top: 1.6rem;
+    margin-bottom: 0.6rem;
+    font-weight: 800;
+    color: var(--tea-text);
+  }
+  .post-content-card img {
+    max-width: 100%;
+    border-radius: 10px;
+    margin: 12px 0;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+
+  /* 🔶 返回按鈕 */
+  .back-btn {
+    padding: 10px 20px;
+    background: var(--tea-accent);
+    border: none;
+    color: white;
+    font-size: 0.95rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  .back-btn:hover {
+    background: var(--tea-accent-dark);
+    color: white;
+  }
+
+  /* 🔶 手機 RWD */
+  @media (max-width: 768px) {
+    .post-title {
+      font-size: 1.55rem;
+    }
+    .post-content-card {
+      padding: 18px;
+      font-size: 1rem;
+    }
+  }
+
+</style>
+
+<div class="post-wrapper">
+
+  <!-- 🔸 上方標題卡片 -->
+  <div class="post-header-card">
+    <div class="post-title">{{ post.title }}</div>
+    <div class="post-meta">
+      <span>📅 {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      <!-- 之後如果有分類可開這個 -->
+      <!-- <span>📁 分類：房產筆記</span> -->
+    </div>
   </div>
 
-  <a href="{{ url_for('blog.index') }}" class="btn btn-secondary mt-3">← 返回列表</a>
+  {% if post.image %}
+    <img src="{{ url_for('static', filename='uploads/' ~ post.image) }}"
+         class="post-image">
+  {% endif %}
+
+  <!-- 🔸 內容卡片 -->
+  <div class="post-content-card">
+    {{ post.content | safe }}
+  </div>
+
+  <!-- 🔸 返回按鈕 -->
+  <a href="{{ url_for('blog.index') }}" class="back-btn">← 返回文章列表</a>
+
 </div>
+
 {% endblock %}

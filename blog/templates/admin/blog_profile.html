@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+{% block title %}部落格個人資料設定{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --tea-bg: #f6f1ea;
+    --tea-panel: #fffdf8;
+    --tea-border: #e4d6c6;
+    --tea-text: #4a3f35;
+    --tea-accent: #d3a378;
+    --tea-accent-dark: #b7855c;
+  }
+
+  body {
+    background-color: var(--tea-bg);
+    font-family: "微軟正黑體", sans-serif;
+  }
+
+  .blog-profile-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-top: 16px;
+    padding-bottom: 24px;
+  }
+
+  .blog-profile-title {
+    color: var(--tea-text);
+    font-weight: 800;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+  }
+
+  .blog-profile-sub {
+    color: #8b7a68;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+  }
+
+  .bp-card {
+    background: var(--tea-panel);
+    border-radius: 16px;
+    padding: 16px 18px 18px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    border: 1px solid var(--tea-border);
+    height: 100%;
+  }
+
+  .bp-label {
+    font-size: 14px;
+    color: var(--tea-text);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .bp-input, .bp-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d4c4af;
+    background: #fff8f0;
+    font-size: 14px;
+  }
+
+  .bp-textarea {
+    min-height: 90px;
+    resize: vertical;
+  }
+
+  /* 頭像編輯區（左邊圓框） */
+  .avatar-editor-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .avatar-editor {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: #f3e2cf;
+    border: 2px solid #f0d1b3;
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .avatar-editor img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .avatar-crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 70%;
+    height: 70%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .avatar-crosshair::before,
+  .avatar-crosshair::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.7);
+  }
+
+  .avatar-crosshair::before {
+    width: 2px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+  }
+  .avatar-crosshair::after {
+    height: 2px;
+    width: 100%;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .bp-range-label {
+    font-size: 12px;
+    color: #8a6e45;
+    margin-top: 4px;
+  }
+
+  .bp-range {
+    width: 100%;
+  }
+
+  .bp-btn-primary {
+    background-color: var(--tea-accent);
+    border: none;
+    color: white;
+    padding: 8px 18px;
+    font-size: 15px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  }
+  .bp-btn-primary:hover {
+    background-color: var(--tea-accent-dark);
+  }
+
+  /* 右邊預覽 Banner 卡片 */
+  .preview-card {
+    background: linear-gradient(135deg, #f7e4cf, #fdf4ea);
+    border-radius: 18px;
+    padding: 18px 20px;
+    border: 1px solid var(--tea-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .preview-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #fff;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid #f2d8c1;
+    position: relative;       /* ✅ 用來放置絕對定位的 img */
+  }
+
+  .preview-avatar img {
+    position: absolute;       /* ✅ 跟左邊 editor 同一套 transform 邏輯 */
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+    width: auto;
+    height: auto;
+    min-width: 100%;
+    min-height: 100%;
+    pointer-events: none;
+  }
+
+  .preview-text-main {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--tea-text);
+  }
+
+  .preview-text-sub {
+    font-size: 0.9rem;
+    color: #8b7a68;
+    margin-top: 4px;
+  }
+
+  .preview-tags {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .preview-tag {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #f0d7bf;
+    color: #7b5b31;
+  }
+
+  .preview-about-title {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--tea-text);
+  }
+
+  .preview-about-text {
+    margin-top: 2px;
+    font-size: 0.85rem;
+    color: #6d5a45;
+    white-space: pre-wrap;
+  }
+
+  /* Tag 編輯 UI */
+  .tag-edit-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #ffe8d2;
+    color: #7b4a28;
+    font-size: 0.8rem;
+    margin: 2px 4px 2px 0;
+  }
+
+  .tag-pill button {
+    border: none;
+    background: transparent;
+    color: #b25b3a;
+    font-size: 0.8rem;
+    margin-left: 4px;
+    cursor: pointer;
+  }
+
+  .tag-pill button:hover {
+    color: #802f17;
+  }
+
+  .btn-tag-add {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--tea-accent);
+    background: #fff;
+    color: var(--tea-accent-dark);
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .btn-tag-add:hover {
+    background: var(--tea-accent);
+    color: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .bp-card {
+      padding: 12px 12px 16px;
+    }
+    .preview-card {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<div class="blog-profile-wrapper">
+  <h2 class="blog-profile-title">部落格個人資料設定</h2>
+  <div class="blog-profile-sub">
+    調整大頭貼、標題、小標籤與「關於我」，儲存後會套用到部落格首頁的 Banner 區塊。
+  </div>
+
+  <div class="row g-4">
+    <!-- 左側：設定表單 -->
+    <div class="col-lg-6">
+      <div class="bp-card">
+        <form method="post" enctype="multipart/form-data">
+          {{ csrf_token() if csrf_token is defined }}
+
+          <!-- 頭貼編輯 -->
+          <div class="mb-3">
+            <label class="bp-label">大頭貼設定</label>
+            <div class="avatar-editor-wrapper">
+              <div class="avatar-editor" id="avatarEditor">
+                {% set avatar_filename = profile.avatar_filename if profile and profile.avatar_filename else None %}
+                <img
+                  id="avatarImg"
+                  src="{% if avatar_filename %}
+                          {{ url_for('static', filename='images/blog/' ~ avatar_filename) }}
+                        {% else %}
+                          {{ url_for('static', filename='images/blog/default_avatar.png') }}
+                        {% endif %}"
+                  alt="avatar"
+                >
+                <div class="avatar-crosshair"></div>
+              </div>
+            </div>
+            <input type="file" name="avatar" id="avatarInput" accept="image/*" class="form-control form-control-sm">
+
+            <!-- 隱藏欄位：用來把 JS 計算後的位置傳回後端 -->
+            <input type="hidden" name="avatar_pos_x" id="avatarPosX"
+                   value="{{ profile.avatar_pos_x if profile and profile.avatar_pos_x is not none else 0 }}">
+            <input type="hidden" name="avatar_pos_y" id="avatarPosY"
+                   value="{{ profile.avatar_pos_y if profile and profile.avatar_pos_y is not none else 0 }}">
+            <input type="hidden" name="avatar_zoom" id="avatarZoom"
+                   value="{{ profile.avatar_zoom if profile and profile.avatar_zoom is not none else 1.0 }}">
+
+            <div class="bp-range-label mt-2">
+              拖曳圖片可以移動位置，使用下方滑桿調整縮放。
+            </div>
+            <input type="range" min="0.5" max="3.0" step="0.02"
+                   class="bp-range" id="zoomSlider">
+          </div>
+
+          <!-- 標題 -->
+          <div class="mb-3">
+            <label class="bp-label">部落格標題</label>
+            <input type="text"
+                   class="bp-input"
+                   name="title"
+                   id="titleInput"
+                   value="{{ profile.title if profile and profile.title else 'Ellen 的奶茶房產筆記本' }}">
+          </div>
+
+          <!-- 副標題 -->
+          <div class="mb-3">
+            <label class="bp-label">副標題 / 簡介</label>
+            <textarea
+              class="bp-textarea"
+              name="subtitle"
+              id="subtitleInput"
+            >{{ profile.subtitle if profile and profile.subtitle else '記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。' }}</textarea>
+          </div>
+
+          <!-- Tag 編輯 -->
+          <div class="mb-3">
+            <label class="bp-label">小標籤（會顯示在 Banner 底下）</label>
+            <div class="tag-edit-row">
+              <input type="text" id="tagInput" class="bp-input" placeholder="輸入標籤後按新增，例如：海線房仲">
+              <button type="button" class="btn-tag-add" id="addTagBtn">＋ 新增標籤</button>
+            </div>
+            <div id="tagList"></div>
+            <input type="hidden" name="tags_raw" id="tagsRaw">
+            <small class="text-muted">可以新增多個標籤，例如：海線房仲、房產知識、投資理財、加拿大打工渡假...</small>
+          </div>
+
+          <!-- 關於我 -->
+          <div class="mb-3">
+            <label class="bp-label">關於區塊標題</label>
+            <input type="text"
+                   class="bp-input"
+                   name="about_title"
+                   id="aboutTitleInput"
+                   value="{{ profile.about_title if profile and profile.about_title else '關於 Ellen' }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="bp-label">關於內容</label>
+            <textarea
+              class="bp-textarea"
+              name="about_text"
+              id="aboutTextInput"
+            >{{ profile.about_text if profile and profile.about_text else '太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。' }}</textarea>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="bp-btn-primary">
+              儲存設定
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 右側：即時預覽首頁 Banner 樣子 -->
+    <div class="col-lg-6">
+      <div class="bp-card">
+        <div class="bp-label mb-2">即時預覽：部落格首頁上方 Banner</div>
+        <div class="preview-card">
+          <div class="preview-avatar">
+            <img
+              id="previewAvatar"
+              src="{% if avatar_filename %}
+                      {{ url_for('static', filename='images/blog/' ~ avatar_filename) }}
+                    {% else %}
+                      {{ url_for('static', filename='images/blog/default_avatar.png') }}
+                    {% endif %}"
+              alt="preview avatar"
+            >
+          </div>
+          <div>
+            <div id="previewTitle" class="preview-text-main">
+              {{ profile.title if profile and profile.title else 'Ellen 的奶茶房產筆記本' }}
+            </div>
+            <div id="previewSubtitle" class="preview-text-sub">
+              {{ profile.subtitle if profile and profile.subtitle else '記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。' }}
+            </div>
+            <div id="previewTags" class="preview-tags">
+              {% set tags_list = profile.tags if profile and profile.tags else ['海線房仲','房產知識','投資理財','加拿大打工渡假'] %}
+              {% for t in tags_list %}
+              <span class="preview-tag">{{ t }}</span>
+              {% endfor %}
+            </div>
+            <div id="previewAboutTitle" class="preview-about-title">
+              {{ profile.about_title if profile and profile.about_title else '關於 Ellen' }}
+            </div>
+            <div id="previewAboutText" class="preview-about-text">
+              {{ (profile.about_text if profile and profile.about_text else '太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。') }}
+            </div>
+          </div>
+        </div>
+        <small class="text-muted d-block mt-2">
+          實際首頁的 Banner 會用一樣的資料與樣式呈現。
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Avatar 拖曳 + 縮放，同步左邊圓框 & 右邊預覽 =====
+  const editor = document.getElementById('avatarEditor');
+  const avatarImg = document.getElementById('avatarImg');
+  const previewAvatar = document.getElementById('previewAvatar');
+  const zoomSlider = document.getElementById('zoomSlider');
+  const inputPosX = document.getElementById('avatarPosX');
+  const inputPosY = document.getElementById('avatarPosY');
+  const inputZoom = document.getElementById('avatarZoom');
+
+  let editorSize = editor ? editor.offsetWidth : 180;
+
+  let offsetX = parseFloat(inputPosX.value);
+  if (isNaN(offsetX)) offsetX = 0;
+
+  let offsetY = parseFloat(inputPosY.value);
+  if (isNaN(offsetY)) offsetY = 0;
+
+  let zoom = parseFloat(inputZoom.value);
+  if (isNaN(zoom) || zoom <= 0) zoom = 1.0;
+
+  function applyTransform() {
+    const transformValue =
+      `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) scale(${zoom})`;
+
+    if (avatarImg) {
+      avatarImg.style.transform = transformValue;
+    }
+    if (previewAvatar) {
+      previewAvatar.style.transform = transformValue;  // ✅ 右邊預覽同步
+    }
+
+    inputPosX.value = offsetX;
+    inputPosY.value = offsetY;
+    inputZoom.value = zoom;
+
+    if (zoomSlider) {
+      zoomSlider.value = zoom;
+    }
+  }
+
+  function autoFitImage() {
+    if (!avatarImg || !avatarImg.naturalWidth || !avatarImg.naturalHeight) return;
+    editorSize = editor ? editor.offsetWidth : 180;
+
+    const storedZoom = parseFloat(inputZoom.value);
+    if (!isNaN(storedZoom) && storedZoom > 0) {
+      zoom = storedZoom;
+    } else {
+      const imgW = avatarImg.naturalWidth;
+      const imgH = avatarImg.naturalHeight;
+      const scaleToFit = Math.min(editorSize / imgW, editorSize / imgH);
+      zoom = scaleToFit;
+      offsetX = 0;
+      offsetY = 0;
+    }
+
+    if (zoomSlider) {
+      const minZ = zoom * 0.5;   // 可以縮小一點
+      const maxZ = zoom * 4.0;   // 可以放到 4 倍
+      zoomSlider.min = minZ.toFixed(2);
+      zoomSlider.max = maxZ.toFixed(2);
+      zoomSlider.value = zoom.toFixed(2);
+    }
+
+    applyTransform();
+  }
+
+  if (zoomSlider) {
+    zoomSlider.addEventListener('input', () => {
+      zoom = parseFloat(zoomSlider.value) || zoom;
+      applyTransform();
+    });
+  }
+
+  // 拖曳圖片
+  let isDragging = false;
+  let startX = 0, startY = 0;
+  let startOffsetX = 0, startOffsetY = 0;
+
+  function pointerDown(e) {
+    e.preventDefault();
+    isDragging = true;
+    const point = e.touches ? e.touches[0] : e;
+    startX = point.clientX;
+    startY = point.clientY;
+    startOffsetX = offsetX;
+    startOffsetY = offsetY;
+  }
+
+  function pointerMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const point = e.touches ? e.touches[0] : e;
+    const dx = point.clientX - startX;
+    const dy = point.clientY - startY;
+    offsetX = startOffsetX + dx;
+    offsetY = startOffsetY + dy;
+    applyTransform();
+  }
+
+  function pointerUp() {
+    isDragging = false;
+  }
+
+  if (editor) {
+    editor.addEventListener('mousedown', pointerDown);
+    editor.addEventListener('touchstart', pointerDown, { passive: false });
+  }
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  window.addEventListener('touchmove', pointerMove, { passive: false });
+  window.addEventListener('touchend', pointerUp);
+
+  const avatarInput = document.getElementById('avatarInput');
+  if (avatarInput) {
+    avatarInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        avatarImg.onload = () => {
+          inputZoom.value = "";
+          inputPosX.value = "";
+          inputPosY.value = "";
+          autoFitImage();
+        };
+        avatarImg.src = ev.target.result;
+        if (previewAvatar) previewAvatar.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (avatarImg) {
+    if (avatarImg.complete) autoFitImage();
+    else avatarImg.addEventListener('load', autoFitImage);
+  }
+
+  // ===== Tag 編輯 & 即時預覽 =====
+  const tagInput = document.getElementById('tagInput');
+  const addTagBtn = document.getElementById('addTagBtn');
+  const tagListDiv = document.getElementById('tagList');
+  const tagsRawInput = document.getElementById('tagsRaw');
+  const previewTags = document.getElementById('previewTags');
+
+  let tags = [];
+  {% if profile and profile.tags %}
+    tags = {{ profile.tags|tojson }};
+  {% else %}
+    tags = ['海線房仲', '房產知識', '投資理財', '加拿大打工渡假'];
+  {% endif %}
+
+  function renderTags() {
+    tagListDiv.innerHTML = '';
+    previewTags.innerHTML = '';
+    tags.forEach((t, idx) => {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.textContent = t;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '×';
+      btn.onclick = () => {
+        tags.splice(idx, 1);
+        renderTags();
+      };
+      pill.appendChild(btn);
+      tagListDiv.appendChild(pill);
+
+      const pTag = document.createElement('span');
+      pTag.className = 'preview-tag';
+      pTag.textContent = t;
+      previewTags.appendChild(pTag);
+    });
+    tagsRawInput.value = tags.join(',');
+  }
+
+  if (addTagBtn) {
+    addTagBtn.addEventListener('click', () => {
+      const val = (tagInput.value || '').trim();
+      if (!val) return;
+      if (!tags.includes(val)) {
+        tags.push(val);
+      }
+      tagInput.value = '';
+      renderTags();
+    });
+  }
+  if (tagInput) {
+    tagInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTagBtn.click();
+      }
+    });
+  }
+
+  renderTags();
+
+  // ===== 文字同步到預覽 =====
+  const titleInput = document.getElementById('titleInput');
+  const subtitleInput = document.getElementById('subtitleInput');
+  const aboutTitleInput = document.getElementById('aboutTitleInput');
+  const aboutTextInput = document.getElementById('aboutTextInput');
+
+  const previewTitle = document.getElementById('previewTitle');
+  const previewSubtitle = document.getElementById('previewSubtitle');
+  const previewAboutTitle = document.getElementById('previewAboutTitle');
+  const previewAboutText = document.getElementById('previewAboutText');
+
+  if (titleInput && previewTitle) {
+    titleInput.addEventListener('input', () => {
+      previewTitle.textContent = titleInput.value || 'Ellen 的奶茶房產筆記本';
+    });
+  }
+
+  if (subtitleInput && previewSubtitle) {
+    subtitleInput.addEventListener('input', () => {
+      previewSubtitle.textContent = subtitleInput.value || '記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。';
+    });
+  }
+
+  if (aboutTitleInput && previewAboutTitle) {
+    aboutTitleInput.addEventListener('input', () => {
+      previewAboutTitle.textContent = aboutTitleInput.value || '關於 Ellen';
+    });
+  }
+
+  if (aboutTextInput && previewAboutText) {
+    aboutTextInput.addEventListener('input', () => {
+      previewAboutText.textContent =
+        aboutTextInput.value || '太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。';
+    });
+  }
+</script>
+{% endblock %}

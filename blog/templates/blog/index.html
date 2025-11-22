@@ -1,49 +1,396 @@
 {% extends "base.html" %}
-{% block title %}部落格文章列表{% endblock %}
+{% block title %}Ellen 的奶茶部落格{% endblock %}
 
 {% block content %}
-<div class="container mt-4" style="max-width: 1200px;">
-  <div class="row">
-    <!-- 側邊分類選單 -->
-    <div class="col-md-3">
-      <h5 class="mb-3">分類資料夾</h5>
-      <ul class="list-group">
-        {% for folder in folders %}
-          <a href="{{ url_for('blog.index', folder=folder) }}"
-             class="list-group-item list-group-item-action {% if current_folder == folder %}active{% endif %}">
-            {{ folder }}
-          </a>
-        {% endfor %}
-      </ul>
-    </div>
 
-    <!-- 主要文章區塊 -->
-    <div class="col-md-9">
-      <h3 class="mb-4">{{ current_folder or '所有文章' }}</h3>
-      {% if posts %}
-        <div class="list-group">
-          {% for post in posts %}
-            <div class="list-group-item list-group-item-action mb-3">
-              <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">
-                  <a href="{{ url_for('blog.show_post', post_id=post.id) }}" class="text-dark text-decoration-none">
-                    {{ post.title }}
-                  </a>
-                </h5>
-                <small class="text-muted">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-              </div>
-              <div class="mb-2">{{ post.content|striptags|truncate(150, True, '...') }}</div>
-              {% if post.image %}
-                <img src="{{ url_for('static', filename='uploads/' ~ post.image) }}" class="img-thumbnail mb-2" style="max-height: 150px;">
-              {% endif %}
-              <a href="{{ url_for('blog.show_post', post_id=post.id) }}" class="btn btn-outline-primary btn-sm">閱讀全文</a>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p>目前沒有文章。</p>
-      {% endif %}
+<style>
+  /* 奶茶主題變數 */
+  :root {
+    --tea-bg: #f6f1ea;
+    --tea-panel: #fffdf8;
+    --tea-border: #e4d6c6;
+    --tea-text: #4a3f35;
+    --tea-accent: #d3a378;
+    --tea-accent-dark: #b7855c;
+  }
+
+  body {
+    background-color: var(--tea-bg);
+    font-family: "微軟正黑體", sans-serif;
+  }
+
+  .blog-container {
+    max-width: 1200px;
+  }
+
+  /* 🔸 上方 Banner 區 */
+  .blog-hero {
+    background: linear-gradient(135deg, #f7e4cf, #fdf4ea);
+    border-radius: 18px;
+    padding: 20px 22px;
+    margin-top: 18px;
+    margin-bottom: 18px;
+    border: 1px solid var(--tea-border);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .blog-hero-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #fff;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid #f2d8c1;
+  }
+  .blog-hero-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .blog-hero-main {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .blog-hero-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--tea-text);
+  }
+  .blog-hero-sub {
+    font-size: 0.95rem;
+    color: #8b7a68;
+    margin-top: 4px;
+    white-space: pre-wrap;
+  }
+  .blog-hero-tags {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hero-tag {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #f0d7bf;
+    color: #7b5b31;
+  }
+
+  /* 🔸 上方分類 tab */
+  .category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .category-tabs a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--tea-border);
+    background: #fff;
+    font-size: 0.85rem;
+    color: var(--tea-text);
+    text-decoration: none;
+  }
+  .category-tabs a.active {
+    background: var(--tea-accent);
+    color: #fff;
+    border-color: var(--tea-accent);
+    font-weight: 700;
+  }
+  .category-tabs a:hover {
+    background: #f4e3d2;
+  }
+
+  /* 🔸 左側分類側欄 */
+  .folder-card {
+    background: var(--tea-panel);
+    border: 1px solid var(--tea-border);
+    padding: 16px 18px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    margin-bottom: 18px;
+  }
+
+  .folder-card h5 {
+    color: var(--tea-text);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .folder-list a {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--tea-border);
+    margin-bottom: 6px;
+    border-radius: 8px;
+    color: var(--tea-text);
+    padding: 8px 10px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+  }
+  .folder-list a:hover {
+    background: #f1e7dd;
+  }
+  .folder-list .active {
+    background: var(--tea-accent);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* 🔸 側邊 About + 音樂卡片 */
+  .side-card {
+    background: var(--tea-panel);
+    border: 1px solid var(--tea-border);
+    padding: 14px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    color: #6d5a4a;
+  }
+
+  .side-card h6 {
+    font-weight: 700;
+    color: var(--tea-text);
+    margin-bottom: 8px;
+  }
+
+  .music-player {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* 🔸 文章卡片：左圖右文 */
+  .post-card {
+    background: var(--tea-panel);
+    border: 1px solid var(--tea-border);
+    border-radius: 14px;
+    padding: 14px 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .post-card:hover {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+  }
+
+  .post-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .post-thumb-wrap {
+    flex: 0 0 32%;
+    max-width: 32%;
+  }
+  .post-thumb {
+    width: 100%;
+    height: 160px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #eee;
+  }
+
+  .post-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .post-title a {
+    color: var(--tea-text);
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .post-title a:hover {
+    color: var(--tea-accent-dark);
+  }
+
+  .post-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #9a8573;
+    margin-top: 3px;
+  }
+
+  .post-excerpt {
+    margin-top: 6px;
+    color: #6d5a4a;
+    font-size: 0.9rem;
+  }
+
+  .read-btn {
+    border: 1px solid var(--tea-accent);
+    color: var(--tea-accent-dark);
+    margin-top: 8px;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    padding: 4px 12px;
+  }
+  .read-btn:hover {
+    background: var(--tea-accent);
+    color: white;
+  }
+
+  /* 手機 RWD */
+  @media (max-width: 768px) {
+    .blog-hero {
+      padding: 16px 14px;
+    }
+    .post-row {
+      flex-direction: column;
+    }
+    .post-thumb-wrap {
+      flex: 0 0 auto;
+      max-width: 100%;
+    }
+    .post-thumb {
+      height: 180px;
+    }
+  }
+</style>
+
+<div class="blog-hero">
+  <div class="blog-hero-avatar">
+    <img
+      src="{% if avatar_url_path %}
+              {{ url_for('static', filename=avatar_url_path) }}
+            {% else %}
+              {{ url_for('static', filename='images/blog/default_avatar.png') }}
+            {% endif %}"
+      alt="Ellen">
+  </div>
+  <div class="blog-hero-main">
+    <div class="blog-hero-title">
+      {{ profile.title if profile and profile.title else 'Ellen 的奶茶房產筆記本' }}
+    </div>
+    <div class="blog-hero-sub">
+      {{ profile.subtitle if profile and profile.subtitle else '' }}
+    </div>
+    <div class="blog-hero-tags">
+      {% for t in profile.tags %}
+        <span class="hero-tag">{{ t }}</span>
+      {% endfor %}
     </div>
   </div>
 </div>
+
+
+  <!-- 🔹 上方分類 Tabs（從 folders 產生） -->
+  <div class="category-tabs mb-3">
+    {% for folder in folders %}
+      <a href="{{ url_for('blog.index', folder=folder) }}"
+         class="{% if current_folder == folder %}active{% endif %}">
+        {{ folder }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="row">
+    <!-- 📁 左邊側欄：分類 + 關於我 + 音樂 -->
+    <div class="col-md-3 mb-4">
+
+      <div class="folder-card">
+        <h5>分類資料夾</h5>
+        <div class="folder-list">
+          {% for folder in folders %}
+          <a href="{{ url_for('blog.index', folder=folder) }}"
+             class="{% if current_folder == folder %}active{% endif %}">
+            {{ folder }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="side-card">
+        <h6>{{ profile.about_title if profile and profile.about_title else '關於 Ellen' }}</h6>
+        <div>
+          {{ profile.about_text if profile and profile.about_text else '太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。' }}
+        </div>
+      </div>
+
+
+      {% if blog_music_url %}
+      <div class="side-card">
+        <h6>今天的背景音樂</h6>
+        <div>邊看文章邊聽一點 BGM 🌙</div>
+        <audio class="music-player" controls>
+          <source src="{{ blog_music_url }}" type="audio/mpeg">
+          您的瀏覽器不支援音樂播放。
+        </audio>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- 📄 右邊主要文章內容 -->
+    <div class="col-md-9">
+
+      <h3 class="mb-3" style="color: var(--tea-text); font-weight: 800;">
+        {{ current_folder or '所有文章' }}
+      </h3>
+
+      {% if posts %}
+        {% for post in posts %}
+        <div class="post-card">
+          <div class="post-row">
+
+            <!-- 縮圖 -->
+            {% if post.image %}
+            <div class="post-thumb-wrap">
+              <a href="{{ url_for('blog.show_post', post_id=post.id) }}">
+                <img src="{{ url_for('static', filename='uploads/' ~ post.image) }}"
+                     class="post-thumb" alt="{{ post.title }}">
+              </a>
+            </div>
+            {% endif %}
+
+            <!-- 文字內容 -->
+            <div class="post-main">
+              <div class="post-title">
+                <a href="{{ url_for('blog.show_post', post_id=post.id) }}">
+                  {{ post.title }}
+                </a>
+              </div>
+
+              <div class="post-meta-row">
+                <div>
+                  🕒 {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+              </div>
+
+              <div class="post-excerpt">
+                {{ post.content|striptags|truncate(120, True, '...') }}
+              </div>
+
+              <a href="{{ url_for('blog.show_post', post_id=post.id) }}" class="btn read-btn">
+                閱讀全文 →
+              </a>
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">目前沒有文章。</p>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
 {% endblock %}

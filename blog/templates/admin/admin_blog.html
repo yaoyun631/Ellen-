@@ -8,6 +8,9 @@
   <a href="{{ url_for('blog.new_post') }}" class="btn btn-success mb-3">新增文章</a>
   <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary mb-3">返回後台總管理</a>
   <a href="{{ url_for('blog.folder_manager') }}" class="btn btn-outline-info mb-3">管理分類資料夾</a>
+  <a href="{{ url_for('blog.blog_profile') }}" class="btn btn-outline-warning mb-3">
+    個人資料設定（大頭貼＋自我介紹）
+  </a>
 
   <h2 class="mb-4">文章列表</h2>
   {% if posts %}
