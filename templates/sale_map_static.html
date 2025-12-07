@@ -251,7 +251,7 @@
 
     if (focusOnArea) {
       if (markers.length > 0) {
-        map.fitBounds(L.featureGroup(markers).getBounds(), { padding: [50, 50] });
+        map.fitBounds(L.featuredGroup(markers).getBounds(), { padding: [50, 50] });
       } else {
         map.setView(defaultLatLng, defaultZoom);
       }

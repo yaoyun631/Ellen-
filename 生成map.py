@@ -16,7 +16,7 @@ output_json = os.path.join(BASE_DIR, "static", "properties.json")
 sitemap_dir = os.path.join(BASE_DIR, "static")
 
 # ✅ 你的正式網址（不要斜線結尾）
-BASE_URL = "https://ellen-my-homie.onrender.com"
+BASE_URL = "https://ellenfindhome"
 
 
 # ===== 讀取 Excel =====
@@ -159,4 +159,4 @@ for u in sitemap_urls:
 
 print("\n🎉 全部 sitemap 生成完成！")
 print("👉 到 Google Search Console 提交：")
-print("   https://ellen-my-homie.onrender.com/static/sitemap_index.xml")
+print("   https://ellenfindhome/static/sitemap_index.xml")

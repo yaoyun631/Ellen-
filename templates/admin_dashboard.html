@@ -2,9 +2,11 @@
 {% block title %}後台主控台{% endblock %}
 {% block content %}
 <h1>後台主控台</h1>
+
 <ul>
   <li><a href="{{ url_for('add_video') }}">影片管理</a></li>
   <li><a href="{{ url_for('blog.admin_blog') }}">文章管理</a></li>
+
   <li>
     <a href="{{ url_for('admin_contacts') }}">
       預約訊息管理
@@ -20,6 +22,31 @@
   <li><a href="{{ url_for('admin_rent_upload') }}">租屋 Excel 檔案管理</a></li>
   <li><a href="{{ url_for('admin_query') }}">租屋資料查詢</a></li>
   <li><a href="{{ url_for('admin_calculator') }}">房地合一損益計算器</a></li>
+
+
+<!-- 1. 搜尋愛屋網頁（抓網址 + 產 JSON） -->
+<a href="{{ url_for('admin_aiwu_update', action='search_aiwu') }}"
+   class="btn btn-primary">
+  搜尋愛屋網頁（產生 JSON）
+</a>
+
+<!-- 2. 生成 / 更新 HTML -->
+<a href="{{ url_for('admin_aiwu_update', action='generate_html') }}"
+   class="btn btn-secondary">
+  生成 / 更新 HTML
+</a>
+
+<!-- 3. 一鍵 pipeline -->
+<a href="{{ url_for('admin_aiwu_update') }}"
+   class="btn btn-success">
+  一鍵更新（網址 + JSON + HTML）
+</a>
+
+<a href="{{ url_for('admin_aiwu_manual') }}" class="btn btn-warning mb-3">
+  🏠 愛屋手動更新工具（上傳 TXT）
+</a>
+
+
 </ul>
 
 {% endblock %}

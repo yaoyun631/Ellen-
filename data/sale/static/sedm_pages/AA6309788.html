@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ title }} | {{ total_price }} </title>
+  <title>海線頂規聯悅馨3房C棟10F | 1788萬 </title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <!-- GLightbox 樣式 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
@@ -96,7 +96,6 @@
       white-space: pre-wrap;
     }
 
-    /* 下方按鈕區（含 icon） */
     .btn-bottom {
       display: flex;
       justify-content: space-around;
@@ -114,7 +113,11 @@
       min-width: 120px;
       text-decoration: none;
       color: inherit;
+      border: 1px solid #ccc;
       border-radius: 6px;
+    }
+    .btn-bottom .btn:hover {
+      background-color: #eee;
     }
     .btn-bottom img {
       width: 24px;
@@ -129,7 +132,7 @@
       text-decoration: underline;
     }
 
-    /* 右側電話預約按鈕 */
+    /* 電話預約按鈕 */
     .phone-box a {
       display: flex;
       align-items: center;
@@ -151,19 +154,16 @@
     }
   </style>
 </head>
-
 <body>
-  {% set static_base = static_base or 'https://ellenfindhome.com/static' %}
   <div class="container">
 
-    {# 把 total_price 轉成乾淨數字（去掉「萬」與逗號），單位：萬 #}
-    {% set price_int = (total_price|string|replace('萬','')|replace(',',''))|int %}
+    
+    
 
     <!-- 🔶 上方 LOGO 與 標題 -->
     <div class="header-bar mb-3">
-      <!-- logo 放在 static/images/logo/ 底下 -->
-      <img src="{{ static_base }}/images/logo/logo.png" alt="Ellen 帶你找家" class="site-logo">
-      <h2>{{ title }}</h2>
+      <img src="../images/logo/logo.png" alt="logo" />
+      <h2>海線頂規聯悅馨3房C棟10F</h2>
     </div>
 
     <!-- 🔶 物件資訊區塊：圖片 + 基本資料 -->
@@ -171,23 +171,43 @@
 
       <!-- 🔶 圖片輪播 -->
       <div class="me-4" style="flex: 1 1 60%;">
-        {% if image_list and image_list|length > 0 %}
-          {% if image_list|length == 1 %}
-            <div class="image-container">
-              <img src="{{ image_list[0] }}" alt="主圖" />
-            </div>
-          {% else %}
+        
+          
             <div id="houseCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
               <div class="carousel-inner">
-                {% for img_url in image_list %}
-                  <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+                
+                  <div class="carousel-item active">
                     <div class="image-container">
-                      <a href="{{ img_url }}" class="glightbox">
-                        <img src="{{ img_url }}" alt="圖片{{ loop.index }}" />
+                      <a href="https://hq.houseol.com.tw/images/pictures/H229AA6309788a.jpg" class="glightbox">
+                        <img src="https://hq.houseol.com.tw/images/pictures/H229AA6309788a.jpg" alt="圖片1" />
                       </a>
                     </div>
                   </div>
-                {% endfor %}
+                
+                  <div class="carousel-item ">
+                    <div class="image-container">
+                      <a href="https://hq.houseol.com.tw/images/pictures/H229AA6309788b.jpg" class="glightbox">
+                        <img src="https://hq.houseol.com.tw/images/pictures/H229AA6309788b.jpg" alt="圖片2" />
+                      </a>
+                    </div>
+                  </div>
+                
+                  <div class="carousel-item ">
+                    <div class="image-container">
+                      <a href="https://hq.houseol.com.tw/images/pictures/H229AA6309788d.jpg" class="glightbox">
+                        <img src="https://hq.houseol.com.tw/images/pictures/H229AA6309788d.jpg" alt="圖片3" />
+                      </a>
+                    </div>
+                  </div>
+                
+                  <div class="carousel-item ">
+                    <div class="image-container">
+                      <a href="https://hq.houseol.com.tw/images/pictures/H229AA6309788e.jpg" class="glightbox">
+                        <img src="https://hq.houseol.com.tw/images/pictures/H229AA6309788e.jpg" alt="圖片4" />
+                      </a>
+                    </div>
+                  </div>
+                
               </div>
               <button class="carousel-control-prev" type="button" data-bs-target="#houseCarousel" data-bs-slide="prev">
                 <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -198,38 +218,38 @@
                 <span class="visually-hidden">下一張</span>
               </button>
             </div>
-          {% endif %}
-        {% endif %}
+          
+        
       </div>
 
       <!-- 右邊資料 -->
       <div style="flex: 1 1 30%;">
-        {% if total_price %}
+        
         <div class="price-box mb-3">
-          <span class="price-main">{{ total_price }}</span>
+          <span class="price-main">1788萬</span>
           <span class="price-unit"></span>
-          {% if unit_price %}
-            <span class="unit-price">（{{ unit_price }}）</span>
-          {% endif %}
+          
+            <span class="unit-price">（37.4萬/坪）</span>
+          
         </div>
-        {% endif %}
+        
 
-        {% if layout %}<div>房/廳/衛：{{ layout }}</div>{% endif %}
-        {% if age %}<div>屋齡：{{ age }}</div>{% endif %}
-        {% if reg_area %}<div>登記坪數：{{ reg_area }}</div>{% endif %}
-        {% if floor_info %}<div>樓別/樓高：{{ floor_info }}</div>{% endif %}
-        {% if direction %}<div>物件座向：{{ direction }}</div>{% endif %}
-        {% if community %}<div>社區/建物：{{ community }}</div>{% endif %}
-        {% if region and map_link %}
+        <div>房/廳/衛：3/ 2/ 2</div>
+        
+        <div>登記坪數：47.81 坪</div>
+        <div>樓別/樓高：10        /26</div>
+        <div>物件座向：座南     朝北</div>
+        <div>社區/建物：聯悅馨/聯</div>
+        
           <div class="map-link">
-            地址：<a href="{{ map_link }}" target="_blank">{{ region }}</a>
+            地址：<a href="https://es.houseol.com.tw/EInfos.aspx?type=1&amp;google=24.26457 ,120.53292" target="_blank">梧棲區大仁路</a>
           </div>
-        {% endif %}
+        
 
-        <!-- 右側電話預約按鈕 -->
+        <!-- 電話預約按鈕 -->
         <div class="phone-box mt-3">
           <a href="tel:0909663034">
-            <img src="{{ static_base }}/images/icon/立即預約.png" alt="電話" />
+            <img src="../images/icon/立即預約.png" alt="電話" />
             <span>0909-663034</span>
           </a>
         </div>
@@ -240,12 +260,12 @@
     <div class="row mt-4">
       <h5 class="mb-2 fw-bold">🔶 房屋資料</h5>
       <div class="col-12 d-flex flex-wrap">
-        {% if building_type %}<div class="me-4 mb-2">類型/現況：{{ building_type }}</div>{% endif %}
-        {% if public_ratio %}<div class="me-4 mb-2">公設比：{{ public_ratio }}</div>{% endif %}
-        {% if usage_zone %}<div class="me-4 mb-2">使用分區：{{ usage_zone }}</div>{% endif %}
-        {% if parking_type %}<div class="me-4 mb-2">車位型式：{{ parking_type }}</div>{% endif %}
-        {% if parking_num %}<div class="me-4 mb-2">車位/編號：{{ parking_num }}</div>{% endif %}
-        {% if status_type %}<div class="me-4 mb-2">現況類別/謄本用途：{{ status_type }}</div>{% endif %}
+        <div class="me-4 mb-2">類型/現況：華廈  /預售</div>
+        <div class="me-4 mb-2">公設比：33.9%</div>
+        
+        <div class="me-4 mb-2">車位型式：坡道/平面</div>
+        <div class="me-4 mb-2">車位/編號：私有/B3-473</div>
+        
       </div>
     </div>
 
@@ -253,12 +273,12 @@
     <div class="row mt-4">
       <h5 class="mb-2 fw-bold">🔶 坪數說明</h5>
       <div class="col-12 d-flex flex-wrap">
-        {% if building_area %}<div class="me-4 mb-2">建物面積：{{ building_area }}</div>{% endif %}
-        {% if main_area %}<div class="me-4 mb-2">主建物坪：{{ main_area }}</div>{% endif %}
-        {% if sub_area %}<div class="me-4 mb-2">附屬建物：{{ sub_area }}</div>{% endif %}
-        {% if public_area %}<div class="me-4 mb-2">公設建坪：{{ public_area }}</div>{% endif %}
-        {% if land_status %}<div class="me-4 mb-2">土地登記：{{ land_status }}</div>{% endif %}
-        {% if base_area %}<div class="me-4 mb-2">總基地坪：{{ base_area }}</div>{% endif %}
+        <div class="me-4 mb-2">建物面積：40.25 坪</div>
+        <div class="me-4 mb-2">主建物坪：24.209 坪</div>
+        <div class="me-4 mb-2">附屬建物：2.404 坪</div>
+        <div class="me-4 mb-2">公設建坪：13.64 坪</div>
+        <div class="me-4 mb-2">土地登記：3.72 坪</div>
+        <div class="me-4 mb-2">總基地坪：3107.62 坪</div>
       </div>
     </div>
 
@@ -266,46 +286,44 @@
     <div class="row mt-4">
       <h5 class="mb-2 fw-bold">🔶 生活圈與周邊</h5>
       <div class="col-12 d-flex flex-wrap">
-        {% if circle %}<div class="me-4 mb-2">生活圈：{{ circle }}</div>{% endif %}
-        {% if near_school %}<div class="me-4 mb-2">鄰近學校：{{ near_school }}</div>{% endif %}
-        {% if near_park %}<div class="me-4 mb-2">鄰近公園：{{ near_park }}</div>{% endif %}
-        {% if near_market %}<div class="me-4 mb-2">鄰近市場：{{ near_market }}</div>{% endif %}
+        
+        <div class="me-4 mb-2">鄰近學校：市立梧棲國小,市立梧棲國中</div>
+        <div class="me-4 mb-2">鄰近公園：頂魚寮公園</div>
+        
       </div>
     </div>
 
     <!-- 🔶 環境特色 -->
     <div class="row mt-4">
-      {% if feature %}
-        <h5 class="mb-2 fw-bold">🌿 環境特色</h5>
-        <div class="col-12">{{ feature }}</div>
-      {% endif %}
+      
     </div>
 
-    <!-- 🔶 下方按鈕區（icon 統一 24px） -->
-    <div class="btn-bottom mt-4">
+    <!-- 下方按鈕區 -->
+    <div class="btn-bottom">
       <a href="tel:0909663034" class="btn btn-outline-dark">
-        <img src="{{ static_base }}/images/icon/立即預約.png" alt="立即預約" />
-        <span>立即預約</span>
+        <img src="../images/icon/立即預約.png" alt="立即預約" />
+        立即預約
       </a>
 
       <a href="https://line.me/ti/p/A1CNJf_2-L" target="_blank" class="btn btn-outline-success">
-        <img src="{{ static_base }}/images/icon/Line.png" alt="LINE詢問" />
-        <span>LINE 詢問</span>
+        <img src="../images/icon/Line.png" alt="LINE詢問" />
+        LINE 詢問
       </a>
 
-      <a href="https://ellen-my-homie.onrender.com/loan?minPrice={{ price_int - 100 }}&maxPrice={{ price_int }}"
+      <!-- 🔸 貸款評估：帶入 minPrice / maxPrice（用靜態頁面顯示的總價） -->
+      <a href="https://ellenfindhome/loan?minPrice=1688&maxPrice=1788"
          class="btn btn-outline-primary">
-        <img src="{{ static_base }}/images/icon/貸款評估.png" alt="貸款評估" />
-        <span>貸款評估</span>
+        <img src="../images/icon/貸款評估.png" alt="貸款評估" />
+        貸款評估
       </a>
 
-      <a href="https://ellen-my-homie.onrender.com" class="btn btn-outline-secondary">
-        <img src="{{ static_base }}/images/icon/猜你喜歡.png" alt="猜你喜歡" />
-        <span>猜你喜歡</span>
+      <a href="https://ellenfindhome" class="btn btn-outline-secondary">
+        <img src="../images/icon/猜你喜歡.png" alt="猜你喜歡" />
+        猜你喜歡
       </a>
     </div>
 
-  </div> <!-- /container -->
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
@@ -314,5 +332,6 @@
       selector: '.glightbox'
     });
   </script>
+
 </body>
 </html>

@@ -16,18 +16,21 @@ from firebase_admin import credentials, firestore
 #  Firebase / Firestore 初始化
 # =========================
 
-# 初始化 Firebase App（只初始化一次）
 if not firebase_admin._apps:
     cred = None
 
-    # ① 優先讀取環境變數（給 Render 用）
+    # ① Render / 伺服器環境：用環境變數 FIREBASE_CREDENTIALS
     cred_json = os.environ.get("FIREBASE_CREDENTIALS")
     if cred_json:
-        cred = credentials.Certificate(json.loads(cred_json))
-    else:
-        # ② 本機開發：讀取專案裡的 serviceAccountKey.json
-        if os.path.exists("serviceAccountKey.json"):
-            cred = credentials.Certificate("serviceAccountKey.json")
+        try:
+            cred = credentials.Certificate(json.loads(cred_json))
+        except Exception as e:
+            print("載入 FIREBASE_CREDENTIALS 失敗：", e)
+            cred = None
+
+    # ② 本機開發：讀取 serviceAccountKey.json
+    if cred is None and os.path.exists("serviceAccountKey.json"):
+        cred = credentials.Certificate("serviceAccountKey.json")
 
     if not cred:
         raise RuntimeError("找不到 Firestore 憑證，請確認 FIREBASE_CREDENTIALS 或 serviceAccountKey.json")
@@ -39,10 +42,12 @@ db = firestore.client()
 
 # Firestore collection 名稱
 POSTS_COLLECTION = "posts"
+PROFILE_COLLECTION = "blog_profile"
+PROFILE_DOC_ID = "main"      # 固定只用一筆 profile
 
 blog_bp = Blueprint('blog', __name__, template_folder='templates')
 
-# 只剩 folders 仍用 json 存本機
+# 分類資料仍用 json 存本機
 FOLDERS_FILE = 'folders.json'
 
 
@@ -58,14 +63,13 @@ def login_required():
 
 
 # =========================
-#  Firestore 文章存取工具
+#  Firestore：文章工具
 # =========================
 
 def _doc_to_post(doc):
     """把 Firestore Document 轉成 dict，並補上 id 欄位"""
     data = doc.to_dict() or {}
     data["id"] = doc.id
-    # 保險：確保 created_at 會有值
     if "created_at" not in data:
         data["created_at"] = datetime.now()
     return data
@@ -106,7 +110,14 @@ def create_post(title, content, image_filename, folder):
     return ref.id
 
 
-def update_post(post_id, title=None, content=None, image_filename=None, folder=None, delete_image=False):
+def update_post(
+    post_id,
+    title=None,
+    content=None,
+    image_filename=None,
+    folder=None,
+    delete_image=False
+):
     """更新文章"""
     update_data = {"updated_at": datetime.now()}
 
@@ -128,6 +139,46 @@ def update_post(post_id, title=None, content=None, image_filename=None, folder=N
 def delete_post_firestore(post_id):
     """刪除文章"""
     db.collection(POSTS_COLLECTION).document(post_id).delete()
+
+
+# =========================
+#  Firestore：Profile / 關於我
+# =========================
+
+def get_profile_firestore():
+    """讀取 Firestore 的 blog profile（若不存在回傳預設）"""
+    doc_ref = db.collection(PROFILE_COLLECTION).document(PROFILE_DOC_ID)
+    doc = doc_ref.get()
+
+    default_profile = {
+        "avatar_filename": None,
+        "avatar_pos_x": 0,
+        "avatar_pos_y": 0,
+        "avatar_zoom": 1.0,
+        "title": "Ellen 的房產筆記本",
+        "subtitle": "記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。",
+        "tags": ["海線房仲", "房產知識"],
+
+        # 「關於我」區塊
+        "about_title": "關於 Ellen",
+        "about_text": "太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。",
+
+        "updated_at": datetime.now(),
+    }
+
+    if doc.exists:
+        data = doc.to_dict() or {}
+        for k, v in default_profile.items():
+            data.setdefault(k, v)
+        return data
+    else:
+        return default_profile
+
+
+def save_profile_firestore(profile: dict):
+    """儲存 blog profile 回 Firestore"""
+    profile["updated_at"] = datetime.now()
+    db.collection(PROFILE_COLLECTION).document(PROFILE_DOC_ID).set(profile)
 
 
 # =========================
@@ -173,9 +224,7 @@ def new_post():
             os.makedirs(upload_folder, exist_ok=True)
             image.save(os.path.join(upload_folder, filename))
 
-        # 存到 Firestore
         create_post(title, content, filename, folder)
-
         flash("文章新增成功")
         return redirect(url_for('blog.admin_blog'))
 
@@ -189,10 +238,6 @@ def new_post():
 
 @blog_bp.route('/admin/blog/edit/<post_id>', methods=['GET', 'POST'])
 def edit_post(post_id):
-    """
-    注意：這裡把 <int:post_id> 改成 <post_id>，
-    因為 Firestore 的 doc id 是字串。
-    """
     login = login_required()
     if login:
         return login
@@ -222,7 +267,7 @@ def edit_post(post_id):
                     os.remove(old_path)
                 except Exception:
                     pass
-            new_filename = ""  # Firestore 裡會被設成空字串
+            new_filename = ""  # Firestore 中設為空字串
 
         # 上傳新圖片
         if image and image.filename:
@@ -256,7 +301,6 @@ def delete_post(post_id):
     if login:
         return login
 
-    # 先抓出來刪圖片
     post = get_post(post_id)
     if post and post.get("image"):
         upload_folder = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
@@ -273,7 +317,7 @@ def delete_post(post_id):
 
 
 # =========================
-#  CKEditor 圖片上傳（維持原本邏輯）
+#  CKEditor 內文圖片上傳
 # =========================
 
 @blog_bp.route('/admin/blog/upload-image', methods=['POST'])
@@ -295,7 +339,7 @@ def upload_image():
 
 
 # =========================
-#  前台：單篇文章頁面
+#  前台：單篇文章
 # =========================
 
 @blog_bp.route('/post/<post_id>')
@@ -317,46 +361,26 @@ def view_post(post_id):
 
 
 # =========================
-#  前台：Blog 首頁（含 folder & profile）
+#  前台：Blog 首頁（含 Profile / 關於我）
 # =========================
 
 @blog_bp.route("/blog")
 def index():
-    folder = request.args.get("folder", "")  # ?folder=分類名稱
+    folder = request.args.get("folder", "")
     all_posts = get_all_posts()
     folders = load_folders()
 
-    # 依照選擇的分類過濾文章
     if folder:
         filtered_posts = [p for p in all_posts if p.get("folder") == folder]
     else:
         filtered_posts = all_posts
 
-    # 🔹 讀取 profile.json
-    base_dir = current_app.root_path
-    data_dir = os.path.join(base_dir, "data")
-    profile_path = os.path.join(data_dir, "profile.json")
+    # 🔹 從 Firestore 讀取個人資料 / 關於我
+    profile = get_profile_firestore()
 
-    if os.path.exists(profile_path):
-        with open(profile_path, "r", encoding="utf-8") as f:
-            profile = json.load(f)
-    else:
-        # 沒有檔案時的預設值
-        profile = {
-            "avatar_filename": None,
-            "avatar_pos_x": 0,
-            "avatar_pos_y": 0,
-            "avatar_zoom": 1.0,
-            "title": "Ellen 的奶茶房產筆記本",
-            "subtitle": "記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。",
-            "tags": ["海線房仲", "房產知識", "投資理財", "加拿大打工渡假"],
-            "about_title": "關於 Ellen",
-            "about_text": "太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。"
-        }
-
-    # 🔹 大頭貼路徑
-    if profile.get("avatar_filename"):
-        avatar_url_path = f"images/blog/{profile['avatar_filename']}"
+    avatar_filename = profile.get("avatar_filename")
+    if avatar_filename:
+        avatar_url_path = f"images/blog/{avatar_filename}"
     else:
         avatar_url_path = "images/blog/default_avatar.png"
 
@@ -450,84 +474,59 @@ def move_folder_down(folder_name):
 
 
 # =========================
-#  Blog Profile（沿用原本邏輯）
+#  後台：Blog Profile / 關於我（Firestore 版）
 # =========================
 
 @blog_bp.route("/blog/profile", methods=["GET", "POST"])
 def blog_profile():
-    # === 準備路徑 ===
-    base_dir = current_app.root_path               # 專案根目錄
-    data_dir = os.path.join(base_dir, "data")      # 存 profile.json 的資料夾
-    os.makedirs(data_dir, exist_ok=True)
-
-    profile_path = os.path.join(data_dir, "profile.json")
+    login = login_required()
+    if login:
+        return login
 
     # 存大頭貼的資料夾：static/images/blog
     blog_img_dir = os.path.join(current_app.static_folder, "images", "blog")
     os.makedirs(blog_img_dir, exist_ok=True)
 
-    # === 預設值（沒有 profile.json 時用這組） ===
-    default_profile = {
-        "avatar_filename": None,
-        "avatar_pos_x": 0,
-        "avatar_pos_y": 0,
-        "avatar_zoom": 1.0,
-        "title": "Ellen 的奶茶房產筆記本",
-        "subtitle": "記錄海線房產、租屋大小事、投資理財心情、與每天的創業生活。",
-        "tags": ["海線房仲", "房產知識", "投資理財", "加拿大打工渡假"],
-        "about_title": "關於 Ellen",
-        "about_text": "太平洋房屋｜海線房仲\n喜歡用故事、影片和文字，陪你一起找到適合的家。"
-    }
+    # 讀取現有 profile（Firestore）
+    profile = get_profile_firestore()
 
-    # === 先讀舊的 profile.json，如果沒有就用預設 ===
-    if os.path.exists(profile_path):
-        try:
-            with open(profile_path, "r", encoding="utf-8") as f:
-                profile = json.load(f)
-        except Exception:
-            profile = default_profile.copy()
-    else:
-        profile = default_profile.copy()
-
-    # === POST：使用者按下儲存 ===
     if request.method == "POST":
-        # ---- 1) 處理大頭貼上傳 ----
+        # 1) 大頭貼上傳
         avatar_file = request.files.get("avatar")
         if avatar_file and avatar_file.filename:
-            # 檔名：avatar_隨機ID.副檔名
             ext = os.path.splitext(secure_filename(avatar_file.filename))[1] or ".jpg"
             filename = f"avatar_{uuid4().hex}{ext}"
             save_path = os.path.join(blog_img_dir, filename)
             avatar_file.save(save_path)
             profile["avatar_filename"] = filename
 
-        # ---- 2) 位置 / 縮放（從隱藏欄位來） ----
+        # 2) 頭像位置 / 縮放
         def to_float(value, default):
             try:
                 return float(value)
             except (TypeError, ValueError):
                 return default
 
-        pos_x = to_float(request.form.get("avatar_pos_x"), 0.0)
-        pos_y = to_float(request.form.get("avatar_pos_y"), 0.0)
-        zoom  = to_float(request.form.get("avatar_zoom"), 1.0)
+        profile["avatar_pos_x"] = to_float(request.form.get("avatar_pos_x"), 0.0)
+        profile["avatar_pos_y"] = to_float(request.form.get("avatar_pos_y"), 0.0)
+        profile["avatar_zoom"] = to_float(request.form.get("avatar_zoom"), 1.0)
 
-        profile["avatar_pos_x"] = pos_x
-        profile["avatar_pos_y"] = pos_y
-        profile["avatar_zoom"]  = zoom
-
-        # ---- 3) 標題 / 副標題 / 關於 ----
+        # 3) Profile 文字
         title = (request.form.get("title") or "").strip()
         subtitle = (request.form.get("subtitle") or "").strip()
         about_title = (request.form.get("about_title") or "").strip()
         about_text = (request.form.get("about_text") or "").strip()
 
-        profile["title"] = title or default_profile["title"]
-        profile["subtitle"] = subtitle or default_profile["subtitle"]
-        profile["about_title"] = about_title or default_profile["about_title"]
-        profile["about_text"] = about_text or default_profile["about_text"]
+        if title:
+            profile["title"] = title
+        if subtitle:
+            profile["subtitle"] = subtitle
+        if about_title:
+            profile["about_title"] = about_title
+        if about_text:
+            profile["about_text"] = about_text
 
-        # ---- 4) 標籤：tags_raw -> list 存進 JSON ----
+        # 4) 標籤 tags
         tags_raw = (request.form.get("tags_raw") or "").strip()
         if tags_raw:
             tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
@@ -535,28 +534,29 @@ def blog_profile():
             tags = []
         profile["tags"] = tags
 
-        # 額外記錄更新時間（可選）
-        profile["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        # 寫回 Firestore
+        save_profile_firestore(profile)
 
-        # === 5) 寫回 profile.json（整包覆蓋） ===
-        with open(profile_path, "w", encoding="utf-8") as f:
-            json.dump(profile, f, ensure_ascii=False, indent=2)
-
-        flash("已更新部落格個人資料，首頁已套用最新設定。", "success")
+        flash("已更新部落格個人資料（包含關於我）", "success")
         return redirect(url_for("blog.index"))
 
-    # === GET：顯示編輯畫面 ===
+    # GET：顯示編輯畫面
     avatar_filename = profile.get("avatar_filename")
     if avatar_filename:
         avatar_url_path = f"images/blog/{avatar_filename}"
     else:
         avatar_url_path = "images/blog/default_avatar.png"
 
-    if isinstance(profile.get("tags"), str):
-        profile["tags"] = [t.strip() for t in profile["tags"].split(",") if t.strip()]
+    # 後台編輯頁如果要顯示 tags_raw（逗號字串）
+    tags = profile.get("tags") or []
+    if isinstance(tags, list):
+        tags_raw = ", ".join(tags)
+    else:
+        tags_raw = str(tags)
 
     return render_template(
         "admin/blog_profile.html",
         profile=profile,
         avatar_url_path=avatar_url_path,
+        tags_raw=tags_raw,
     )

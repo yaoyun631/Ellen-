@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Eellen帶你找家{% endblock %}
+{% block title %}Ellen帶你找家{% endblock %}
 {% block content %}
 
 <style>
@@ -243,7 +243,7 @@
   <h2 class="mb-3" style="color: var(--nc-text);">🔥 Ellen 強銷專區</h2>
   <div class="position-relative">
     <!-- 左箭頭 -->
-    <button id="leftArrow" class="btn btn-outline-secondary position-absolute top-50 start-0 translate-middle-y z-1" onclick="scrollFeatured(-1)">
+    <button id="leftArrow" class="btn btn-outline-secondary position-absolute top-50 start-0 translate-middle-y z-1" onclick="scrollfeatured(-1)">
       ‹
     </button>
 
@@ -257,9 +257,9 @@
       {% for row in featured_data %}
       {% set img = row.image_url|string if row.image_url else '' %}
       <div class="card me-3 shadow-sm border-0" style="min-width: 260px; flex: 0 0 auto; background: #fff; border-radius: 12px;">
-        <a href="{{ url_for('static', filename='sedm_pages/' + row.物件編號 + '.html') }}"
-            target="_blank"
-            style="text-decoration:none; color:inherit;">
+        <a href="{{ url_for('house_page', house_id=row.物件編號) }}"
+          target="_blank"
+          style="text-decoration:none; color:inherit;">
 
 
           <!-- 強銷卡片圖片：沒有圖就顯示 LOGO，背景透明 -->
@@ -299,7 +299,7 @@
     </div>
 
     <!-- 右箭頭 -->
-    <button id="rightArrow" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y z-1" onclick="scrollFeatured(1)">
+    <button id="rightArrow" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y z-1" onclick="scrollfeatured(1)">
       ›
     </button>
   </div>
@@ -318,7 +318,7 @@
     if (rightArrow) rightArrow.style.display = featuredContainer.scrollLeft < maxScrollLeft ? 'block' : 'none';
   }
 
-  function scrollFeatured(direction) {
+  function scrollfeatured(direction) {
     if (!featuredContainer) return;
     const card = featuredContainer.querySelector('.card');
     if (!card) return;
@@ -342,7 +342,7 @@
       if (featuredContainer.scrollLeft >= maxScrollLeft - 10) {
         featuredContainer.scrollTo({ left: 0, behavior: 'smooth' });
       } else {
-        scrollFeatured(1);
+        scrollfeatured(1);
       }
     }, 5000);
   }
@@ -514,9 +514,10 @@
   {% for row in data %}
   {% set img = row.image_url|string if row.image_url else '' %}
   <div class="col">
-    <a href="{{ url_for('static', filename='sedm_pages/' + row.物件編號 + '.html') }}"
-       target="_blank"
-       style="text-decoration:none; color:inherit;">
+    <a href="{{ url_for('house_page', house_id=row.物件編號) }}"
+      target="_blank"
+      style="text-decoration:none; color:inherit;">
+
 
       <div class="card listing-card shadow-sm">
         <!-- 圖片區：沒有圖片就顯示 LOGO（透明底） -->

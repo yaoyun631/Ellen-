@@ -454,6 +454,22 @@
   </div>
 
 </div>
+  <!-- 分頁按鈕 -->
+  <nav aria-label="Page navigation" class="mt-4 d-flex justify-content-center align-items-center gap-3">
+    <button class="btn btn-outline-secondary"
+            {% if page <= 1 %}disabled{% endif %}
+            onclick="changePage({{ page - 1 }})">
+      上一頁
+    </button>
+
+    <span>第 {{ page }} 頁 / 共 {{ total_pages }} 頁</span>
+
+    <button class="btn btn-outline-secondary"
+            {% if page >= total_pages %}disabled{% endif %}
+            onclick="changePage({{ page + 1 }})">
+      下一頁
+    </button>
+  </nav>
 
 <script>
   // 區域勾選全部 / 取消
@@ -476,7 +492,15 @@
       icon.classList.add('bi-chevron-down');
     }
   }
+
+  // 分頁：保留目前的篩選條件，只改 page
+  function changePage(targetPage) {
+    const url = new URL(window.location);
+    url.searchParams.set('page', targetPage);
+    window.location.href = url.toString();
+  }
 </script>
+
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 

@@ -1,151 +1,304 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <title>強銷物件管理</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
-    .search-box { margin-bottom: 20px; }
-    input[type="text"] { padding: 8px; width: 300px; }
-    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
-    .card {
-      background: white;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      width: 240px;
-      cursor: pointer;
-      position: relative;
-      transition: box-shadow 0.3s ease;
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      padding: 20px;
+      background: #f8f8f8;
     }
-    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .card img {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 6px 6px 0 0;
+    h1 {
+      margin-bottom: 10px;
     }
-    .card .info {
-      padding: 10px;
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
       font-size: 14px;
     }
-    .card .address {
-      font-weight: bold;
-      margin-bottom: 6px;
-      font-size: 15px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .summary {
+      font-size: 14px;
     }
-    .card .meta {
-      color: #555;
+    .search-form {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .search-form input[type="text"] {
+      padding: 5px 8px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .search-form button {
+      padding: 5px 10px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: none;
+      background: #ff8a3d;
+      color: #fff;
+      cursor: pointer;
+    }
+    .search-form button:hover {
+      background: #ff7a20;
+    }
+
+    .filter-checkbox {
+      font-size: 14px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background: #eee;
+    }
+    .card-body {
+      padding: 10px 12px 12px;
+      font-size: 13px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: bold;
       margin-bottom: 4px;
     }
-    .card .details {
-      color: #555;
+    .card-sub {
+      color: #666;
       margin-bottom: 6px;
     }
-    .card .price {
-      color: #fa782a;
+    .card-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+      color: #444;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: #f1f1f1;
+    }
+    .badge-orange {
+      background: #ff8a3d;
+      color: #fff;
+    }
+    .card-footer {
+      padding: 8px 12px 10px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .feat-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .feat-label span.status {
       font-weight: bold;
-      font-size: 1.1rem;
     }
-    .card .featured-toggle {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 32px;
-      color: #ccc;
-      user-select: none;
-      transition: color 0.3s ease;
+    .feat-label span.on {
+      color: #d9534f;
     }
-    .card .featured-toggle.active {
-      color: #fa782a;
+    .feat-label span.off {
+      color: #aaa;
+    }
+
+    .pagination-container {
+      text-align: center;
+      margin: 16px 0;
+    }
+    .pagination {
+      display: inline-flex;
+      list-style: none;
+      gap: 6px;
+      padding: 0;
+    }
+    .pagination li a {
+      display: inline-block;
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 13px;
+      background: #fff;
+      color: #333;
+    }
+    .pagination li.active a {
+      background-color: #ff8a3d;
+      color: #fff;
+      border-color: #ff8a3d;
+    }
+    .pagination li a:hover {
+      background-color: #f1f1f1;
     }
   </style>
 </head>
 <body>
+
   <h1>強銷物件管理</h1>
 
-  <form method="get" class="search-box">
-    <input type="text" name="keyword" placeholder="搜尋地址或標題" value="{{ keyword }}">
-    <label style="margin-left: 10px;">
-      <input type="checkbox" name="only_featured" value="1" {% if only_featured %}checked{% endif %}>
-      只看強銷物件
-    </label>
-    <button type="submit">搜尋</button>
-  </form>
+  <div class="top-bar">
+    <div class="summary">
+      共 {{ total }} 筆物件，每頁 {{ per_page }} 筆，現在在第 {{ page }} / {{ total_pages }} 頁
+    </div>
 
-  <div class="grid">
-    {% for item in data %}
-      <div class="card" data-id="{{ item.id }}">
-        <img src="{{ item.image_url or url_for('static', filename='images/no-image.png') }}" alt="房屋圖片" />
-        <div class="featured-toggle {% if item.強銷 == '是' %}active{% endif %}" 
-             onclick="toggleFeatured(event, '{{ item.id }}')" title="切換強銷">♥</div>
-        <div class="info">
-          <div class="address" title="{{ item.區域 }}">{{ item.房屋標題 or item.區域 }}</div>
-          <div class="meta">
-            {{ item.區域 or '-' }} | {{ item.房型 or '-' }} | {{ item.房廳衛 or '-' }}
-          </div>
-          <div class="details">
-            {% if item.屋齡 is number %}
-              {{ item.屋齡 }}年
-            {% else %}
-              -
+    <div style="display:flex;align-items:center;gap:12px;">
+      <!-- 只顯示強銷勾勾 -->
+      <form method="get" action="{{ url_for('admin_featured') }}" class="filter-checkbox">
+        <label>
+          <input type="checkbox"
+                 name="only"
+                 value="1"
+                 {% if show_only %}checked{% endif %}
+                 onchange="this.form.submit()">
+          只顯示強銷
+        </label>
+        <input type="hidden" name="keyword" value="{{ keyword }}">
+        <input type="hidden" name="page" value="1">
+      </form>
+
+      <!-- 搜尋框 -->
+      <form method="get" action="{{ url_for('admin_featured') }}" class="search-form">
+        <input type="text" name="keyword" placeholder="搜尋編號 / 標題 / 區域 / 社區"
+               value="{{ keyword }}">
+        {% if show_only %}
+          <input type="hidden" name="only" value="1">
+        {% endif %}
+        <input type="hidden" name="page" value="1">
+        <button type="submit">搜尋</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    {% for item in items %}
+      <div class="card">
+        {% if item.image_url %}
+          <img src="{{ item.image_url }}" alt="物件圖片">
+        {% else %}
+          <img src="https://via.placeholder.com/400x300?text=No+Image" alt="No image">
+        {% endif %}
+
+        <div class="card-body">
+          <div class="card-title">{{ item.title or '（未填標題）' }}</div>
+          <div class="card-sub">{{ item.region or '' }} ｜ 編號：{{ item.id }}</div>
+          <div class="card-info">
+            {% if item.building_ping %}
+              <span class="badge">{{ item.building_ping }} 坪</span>
             {% endif %}
-            | 
-            {% if item.登記坪數 is number %}
-              {{ item.登記坪數|round(1) }}坪
-            {% else %}
-              -
+            {% if item.price %}
+              <span class="badge badge-orange">{{ item.price }} 萬</span>
             {% endif %}
-          </div>
-          <div class="price">
-            {% if item.委託總價 is number %}
-              {{ item.委託總價|int }} 萬
-            {% else %}
-              無資料
+            {% if item.age %}
+              <span class="badge">{{ item.age }} 年屋齡</span>
             {% endif %}
           </div>
         </div>
+
+        <div class="card-footer">
+          <label class="feat-label">
+            <input type="checkbox"
+                   {% if item.is_featured %}checked{% endif %}
+                   onclick="togglefeatured('{{ item.id }}', this)">
+            <span class="status {% if item.is_featured %}on{% else %}off{% endif %}">
+              {% if item.is_featured %}強銷中{% else %}未開啟{% endif %}
+            </span>
+          </label>
+        </div>
       </div>
-    {% else %}
-      <p>找不到符合條件的物件。</p>
     {% endfor %}
+
+    {% if not items %}
+      <p>目前沒有符合條件的物件。</p>
+    {% endif %}
   </div>
 
-<script>
-function toggleFeatured(event, itemId) {
-  event.stopPropagation();
-  const icon = event.currentTarget;
+  {% if total_pages > 1 %}
+  <nav class="pagination-container">
+    <ul class="pagination">
+      {% set only_param = 1 if show_only else None %}
+      {% set kw_param = keyword if keyword else None %}
 
-  fetch('/admin/toggle_featured/' + itemId, {
-    method: 'POST'
-  })
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP status " + response.status);
-    return response.json();
-  })
-  .then(data => {
-    if (data.status === 'success') {
-      if (data.new_value === '是') icon.classList.add('active');
-      else icon.classList.remove('active');
-    } else {
-      alert('更新失敗: ' + data.message);
+      {% if page > 1 %}
+        <li>
+          <a href="{{ url_for('admin_featured', page=page-1, only=only_param, keyword=kw_param) }}">上一頁</a>
+        </li>
+      {% endif %}
+
+      {% for p in range(1, total_pages + 1) %}
+        <li class="{% if p == page %}active{% endif %}">
+          <a href="{{ url_for('admin_featured', page=p, only=only_param, keyword=kw_param) }}">{{ p }}</a>
+        </li>
+      {% endfor %}
+
+      {% if page < total_pages %}
+        <li>
+          <a href="{{ url_for('admin_featured', page=page+1, only=only_param, keyword=kw_param) }}">下一頁</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  <script>
+    // 勾選 / 取消 強銷 → 呼叫 /admin/toggle_featured/<物件編號>
+    function togglefeatured(itemId, checkbox) {
+      fetch(`/admin/toggle_featured/${itemId}`, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || data.status !== "success") {
+          alert("更新失敗，請稍後再試");
+          checkbox.checked = !checkbox.checked;
+        } else {
+          // 成功：更新文字顏色
+          const label = checkbox.closest(".feat-label");
+          const span = label.querySelector("span.status");
+          if (checkbox.checked) {
+            span.textContent = "強銷中";
+            span.classList.add("on");
+            span.classList.remove("off");
+          } else {
+            span.textContent = "未開啟";
+            span.classList.add("off");
+            span.classList.remove("on");
+          }
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("連線失敗，請稍後再試");
+        checkbox.checked = !checkbox.checked;
+      });
     }
-  })
-  .catch(error => {
-    alert('網路錯誤: ' + error.message);
-  });
-}
-
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('click', (e) => {
-    if (e.target.classList.contains('featured-toggle')) return;
-    const id = card.getAttribute('data-id');
-    window.location.href = '/admin/featured/' + id;
-  });
-});
-</script>
+  </script>
 
 </body>
 </html>
