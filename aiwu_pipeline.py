@@ -1,62 +1,138 @@
+# aiwu_pipeline.py
+# -*- coding: utf-8 -*-
+"""
+目標：
+A) chunk（完整型錄資料YYYYMMDD）存「型錄等級」rows：不去重（例如 1078）
+B) aiwu_items：前台顯示用（不去重）=> 1078（或更多），每筆都有 batch_id
+C) aiwu_rows + sedm_pages：唯一 No 去重後（例如 1057），只更新有變動/缺漏（fingerprint）
+D) aiwu_meta/latest：紀錄最新 batch_id，避免前台混舊資料
+"""
+
 import os
 import re
 import json
 import time
+import hashlib
 from datetime import datetime
+from typing import Dict, List, Tuple, Optional
 
 import requests
 from bs4 import BeautifulSoup
 
-from firebase_client import db, bucket
-from firebase_admin import firestore
-from firebase_admin import firestore
-
-from flask import render_template, current_app 
-from firebase_client import db, bucket 
-from flask import render_template
-
-# Selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+
+from firebase_client import db, bucket
+from firebase_admin import firestore
+from flask import render_template, current_app
 
 # ========= 愛屋網址 =========
-
 AIWU_LOGIN_URL = "https://es.houseol.com.tw/login.aspx"
-# 這個是你說的「銷售物件列表」頁
 AIWU_LIST_URL = "https://es.houseol.com.tw/index.aspx?module=SellHouse&file=Object#"
 
-AIWU_JSON_COLLECTION = "aiwu_json"     # 目前不再使用，只保留名稱避免撞名
-AIWU_ROWS_COLLECTION = "aiwu_rows"
-SEDM_PAGES_COLLECTION = "sedm_pages"
-AIWU_TXT_COLLECTION = "aiwu_txt"       # 專門存原始 TXT / 網址清單
+# ========= Firestore Collections =========
+AIWU_ITEMS_COLLECTION = "aiwu_items"      # ✅ 前台：型錄級（不去重）
+AIWU_ROWS_COLLECTION = "aiwu_rows"        # ✅ 後台：唯一 No（去重後）
+SEDM_PAGES_COLLECTION = "sedm_pages"      # ✅ 靜態頁
+AIWU_TXT_COLLECTION = "aiwu_txt"          # 原始 TXT
+AIWU_META_COLLECTION = "aiwu_meta"        # ✅ 存 latest batch_id
+AIWU_LATEST_DOC = "latest"
 
-
+# chunk collections: 完整型錄資料YYYYMMDD
+CHUNK_PREFIX = "完整型錄資料"
 
 # ========= 基本設定 =========
-
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
+__all__ = [
+    "crawl_aiwu_and_save_txt",
+    "generate_aiwu_json_from_txt",
+    "sync_items_from_latest_chunk",       # ✅ 補上（你之前 ImportError 就是缺這個）
+    "sync_html_from_firestore_json",      # ✅ 同步唯一 No（aiwu_rows + sedm_pages）
+    "sync_items_and_rows_from_latest_chunk",
+    "run_aiwu_pipeline",
+    "count_unique_house_ids_from_txt",
+    "build_image_url",
+    "expand_houseol_images",
+    "get_latest_batch_id",
+]
 
-# ========= HouseOL 圖片工具 =========
+# =========================================================================
+# Log helper（終端機即時）
+# =========================================================================
+def tlog(*args):
+    ts = datetime.now().strftime("%H:%M:%S")
+    msg = " ".join(str(a) for a in args)
+    print(f"[{ts}] {msg}", flush=True)
 
-def expand_houseol_images(image_url: str):
-    """
-    給一張 HouseOL 的主圖 ( ...a.jpg )，自動展開成 a～t，
-    並用 HEAD 檢查存在的才保留。
-    """
+# =========================================================================
+# Firestore 安全化：避免某筆資料害整批中斷
+# =========================================================================
+def _sanitize_firestore_value(v):
+    if v is None:
+        return None
+    if isinstance(v, (str, int, float, bool)):
+        return v
+    if isinstance(v, datetime):
+        return v
+    if isinstance(v, list):
+        return [_sanitize_firestore_value(x) for x in v]
+    if isinstance(v, dict):
+        return _sanitize_firestore_dict(v)
+    if isinstance(v, set):
+        return [_sanitize_firestore_value(x) for x in sorted(list(v))]
+    return str(v)
+
+def _sanitize_firestore_key(k: str) -> str:
+    k = (k or "").strip()
+    k = k.replace(".", "．")
+    k = k.replace("\u0000", "")
+    return k
+
+def _sanitize_firestore_dict(d: dict) -> dict:
+    out = {}
+    for k, v in (d or {}).items():
+        sk = _sanitize_firestore_key(str(k))
+        out[sk] = _sanitize_firestore_value(v)
+    return out
+
+# =========================================================================
+# 小工具：從網址抓 No / AID
+# =========================================================================
+def extract_house_id_from_url(url: str) -> str:
+    m = re.search(r"[?&]No=([A-Z0-9]+)", url or "", flags=re.I)
+    return (m.group(1) if m else "").strip()
+
+def extract_aid_from_url(url: str) -> str:
+    m = re.search(r"[?&]AID=([A-Z0-9]+)", url or "", flags=re.I)
+    return (m.group(1) if m else "").strip()
+
+def count_unique_house_ids_from_txt(txt_path: str) -> Tuple[int, set]:
+    ids = set()
+    with open(txt_path, "r", encoding="utf-8") as f:
+        for line in f:
+            u = line.strip()
+            if not u:
+                continue
+            hid = extract_house_id_from_url(u)
+            if hid:
+                ids.add(hid)
+    return len(ids), ids
+
+# =========================================================================
+# HouseOL 圖片：主圖 a.jpg → 展開 a~t（只保留存在的）
+# =========================================================================
+def expand_houseol_images(image_url: str) -> List[str]:
     if not image_url:
         return []
-
     m = re.search(r"^(?P<prefix>.+)[a-zA-Z]\.jpg$", image_url)
     if not m:
         return [image_url]
 
     prefix = m.group("prefix")
     candidates = []
-
     for ch in "abcdefghijklmnopqrst":
         url = f"{prefix}{ch}.jpg"
         try:
@@ -66,21 +142,23 @@ def expand_houseol_images(image_url: str):
         except requests.RequestException:
             continue
 
-    if not candidates:
-        candidates.append(image_url)
+    return candidates or [image_url]
 
-    return candidates
+def build_image_url(ecatalog_url: str) -> Optional[str]:
+    """
+    從 Ecatalog 連結推回主圖 a.jpg：
+    https://hq.houseol.com.tw/images/pictures/{AID}{No}a.jpg
+    """
+    no = extract_house_id_from_url(ecatalog_url)
+    aid = extract_aid_from_url(ecatalog_url)
+    if no and aid:
+        return f"https://hq.houseol.com.tw/images/pictures/{aid}{no}a.jpg"
+    return None
+
 # =========================================================================
 # 0. 登入愛屋
 # =========================================================================
-
 def aiwu_login(driver):
-    """
-    自動登入愛屋：
-    - 進 login.aspx
-    - 填入 HouseID / MemberID / MemberPW
-    - 點『登入』按鈕
-    """
     house_id = os.environ.get("AIWU_HOUSE_ID", "H229")
     member_id = os.environ.get("AIWU_MEMBER_ID", "sp290")
     member_pw = os.environ.get("AIWU_MEMBER_PW", "0000")
@@ -88,45 +166,24 @@ def aiwu_login(driver):
     driver.get(AIWU_LOGIN_URL)
     time.sleep(1.5)
 
-    # 填欄位
     house_input = driver.find_element(By.ID, "HouseID")
     member_input = driver.find_element(By.ID, "MemberID")
     pw_input = driver.find_element(By.ID, "MemberPW")
 
-    house_input.clear()
-    house_input.send_keys(house_id)
+    house_input.clear(); house_input.send_keys(house_id)
+    member_input.clear(); member_input.send_keys(member_id)
+    pw_input.clear(); pw_input.send_keys(member_pw)
 
-    member_input.clear()
-    member_input.send_keys(member_id)
-
-    pw_input.clear()
-    pw_input.send_keys(member_pw)
-
-    # 點登入按鈕（LinkButton1）
     login_btn = driver.find_element(By.ID, "LinkButton1")
     login_btn.click()
 
     time.sleep(2)
-    print(f"🟢 已嘗試登入愛屋（{house_id} / {member_id}）")
-
-
-
+    tlog(f"🟢 已嘗試登入愛屋（{house_id} / {member_id}）")
 
 # =========================================================================
-# 1. 自動登入 + 抓列表 + 存 TXT：crawl_aiwu_and_save_txt
+# 1. 登入 + 抓列表 + 存 TXT
 # =========================================================================
-
 def crawl_aiwu_and_save_txt(headless=True, click_interval=1.0, max_rounds=200):
-    """
-    流程：
-    1. 開 Selenium → 登入愛屋
-    2. 進銷售物件列表頁 (AIWU_LIST_URL)
-    3. 不斷滾動 + 點『查看更多』，同時收集畫面上所有『型錄』連結
-    4. 去除重複，存成 data/愛屋YYYYMMDD.txt
-
-    回傳：(網址數量, txt_path)
-    """
-
     options = Options()
     if headless:
         options.add_argument("--headless=new")
@@ -135,32 +192,25 @@ def crawl_aiwu_and_save_txt(headless=True, click_interval=1.0, max_rounds=200):
     options.add_argument("--disable-gpu")
 
     driver = webdriver.Chrome(options=options)
-
     try:
-        # 1️⃣ 先登入
         aiwu_login(driver)
-
-        # 2️⃣ 進銷售物件列表頁
         driver.get(AIWU_LIST_URL)
         time.sleep(1.5)
-        print(f"📄 進入列表頁：{AIWU_LIST_URL}")
+        tlog(f"📄 進入列表頁：{AIWU_LIST_URL}")
 
         catalog_links = set()
         last_count = 0
         same_count_rounds = 0
 
         for round_idx in range(1, max_rounds + 1):
-            # 滾到最底
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(1)
 
-            # 每一輪把畫面上所有「型錄」連結抓起來
             a_tags = driver.find_elements(By.TAG_NAME, "a")
             for a in a_tags:
                 text = (a.text or "").strip()
                 href = a.get_attribute("href") or ""
                 if text == "型錄" and "Ecatalog.aspx" in href:
-                    # 處理 //、/ 的相對路徑
                     if href.startswith("//"):
                         href = "https:" + href
                     elif href.startswith("/"):
@@ -168,75 +218,71 @@ def crawl_aiwu_and_save_txt(headless=True, click_interval=1.0, max_rounds=200):
                     catalog_links.add(href)
 
             now_count = len(catalog_links)
-            print(f"🔁 第 {round_idx} 輪，目前抓到 {now_count} 筆型錄連結")
+            tlog(f"🔁 第 {round_idx} 輪，目前抓到 {now_count} 筆型錄連結")
 
-            # 如果連續幾輪數量都沒增加，就判定到底了
             if now_count == last_count:
                 same_count_rounds += 1
             else:
                 same_count_rounds = 0
             last_count = now_count
 
-            # 嘗試找到「查看更多」
+            # 點「查看更多」
             try:
                 load_more = driver.find_element(By.CSS_SELECTOR, "a.load_more")
                 if load_more.is_displayed():
-                    print("👉 點擊『查看更多』")
+                    tlog("👉 點擊『查看更多』")
                     load_more.click()
                     time.sleep(click_interval)
                 else:
-                    print("⚠️ load_more 按鈕不可見，準備結束")
+                    tlog("⚠️ load_more 不可見，準備結束")
                     break
             except Exception:
-                print("⚠️ 找不到『查看更多』按鈕，準備結束")
+                tlog("⚠️ 找不到『查看更多』按鈕，準備結束")
                 break
 
-            # 如果連續 3 輪都沒有增加，直接停
             if same_count_rounds >= 3:
-                print("⚠️ 連續多輪網址數量沒變，視為已到底，停止")
+                tlog("⚠️ 連續多輪沒有增加，停止")
                 break
 
         links = sorted(catalog_links)
-        print(f"🟢 共抓到 {len(links)} 筆型錄網址")
+        tlog(f"🟢 共抓到 {len(links)} 筆型錄網址")
 
-        # 3️⃣ 存 TXT 檔
         date_str = datetime.now().strftime("%Y%m%d")
         txt_path = os.path.join(DATA_DIR, f"愛屋{date_str}.txt")
-
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write("\n".join(links))
 
-        print(f"📄 已儲存網址清單：{txt_path}")
-        return len(links), txt_path
+        unique_cnt, _ = count_unique_house_ids_from_txt(txt_path)
+        tlog(f"📌 TXT 網址數：{len(links)}；唯一物件編號數（No 去重）：{unique_cnt}")
 
+        return len(links), txt_path
     finally:
         driver.quit()
 
-
 # =========================================================================
-# 2. 單頁解析：extract_info_simple
+# 2. 單頁解析：extract_info_simple（失敗也先占位 No）
 # =========================================================================
-
 def extract_info_simple(url: str) -> dict:
-    """用 requests 抓型錄資料（不使用 Selenium），並加上屋齡 / 環境特色 / 地圖連結等資訊"""
+    house_id = extract_house_id_from_url(url)
+    result = {"網址": url}
+    if house_id:
+        result["物件編號"] = house_id
+
     try:
-        resp = requests.get(url, timeout=8)
+        resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        result = {"網址": url}
-
-        # ===== 房屋標題與區域 =====
+        # 標題/區域
         title_el = soup.select_one(".title h3")
         area_el = soup.select_one("#VarArea .caption")
-
         result["房屋標題"] = title_el.get_text(strip=True) if title_el else ""
         result["區域"] = area_el.get_text(strip=True) if area_el else ""
 
-        # ===== 表格欄位（統一去掉全形空格/不換行空白）=====
-        for row in soup.select(".t-tr"):
-            ths = row.select(".t-th")
-            tds = row.select(".t-td")
+        # 表格欄位
+        for tr in soup.select(".t-tr"):
+            ths = tr.select(".t-th")
+            tds = tr.select(".t-td")
             for th, td in zip(ths, tds):
                 label = (
                     th.get_text(strip=True)
@@ -245,262 +291,221 @@ def extract_info_simple(url: str) -> dict:
                     .replace("\u3000", "")
                     .strip()
                 )
-                # 有些 td 裡面會包 <p>，優先取 p 文字
                 p = td.select_one("p")
                 value = (p.get_text(strip=True) if p else td.get_text(strip=True))
                 value = value.replace("\xa0", "").replace("\u3000", "").strip()
-
                 if label and (label not in result):
                     result[label] = value
 
-        # ===== 屋齡（從「屋齡」那一塊區域找數字） =====
+        # 屋齡
+        age_text = ""
         age_div = None
         for div in soup.select("div.title"):
-            clean_title = (
-                div.get_text(strip=True)
-                .replace(" ", "")
-                .replace("\u3000", "")
-            )
+            clean_title = div.get_text(strip=True).replace(" ", "").replace("\u3000", "")
             if "屋齡" in clean_title:
                 age_div = div
                 break
-
-        age_text = ""
         if age_div:
             next_sib = age_div.find_next_sibling()
             if next_sib:
-                # 找 p 裡面的「xx年」
-                p_tags = next_sib.find_all("p")
-                for p in p_tags:
+                for p in next_sib.find_all("p"):
                     txt = p.get_text(strip=True).replace("\u3000", "")
                     m = re.search(r"(\d+\.?\d*)\s*年", txt)
                     if m:
                         age_text = m.group(1) + "年"
                         break
-                # 如果上面沒抓到，就整塊文字塞回去
                 if not age_text:
                     age_text = next_sib.get_text(strip=True).replace("\u3000", "")
             else:
-                # 沒有兄弟節點，就用父層的文字清理後當屋齡
-                age_text = (
-                    age_div.parent.get_text(strip=True)
-                    .replace("屋齡", "")
-                    .replace("\u3000", "")
-                    .strip()
-                )
-
+                age_text = age_div.parent.get_text(strip=True).replace("屋齡", "").replace("\u3000", "").strip()
         if age_text:
             result["屋齡"] = age_text
 
-        # ===== 環境特色（#GoodSpan 裡的重點） =====
+        # 環境特色
         features = []
         good_span = soup.select_one("#GoodSpan")
         if good_span:
-            for pdiv in good_span.select("div.points strong"):
-                text = pdiv.get_text(strip=True)
-                if text:
-                    features.append(text)
-
+            for s in good_span.select("div.points strong"):
+                t = s.get_text(strip=True)
+                if t:
+                    features.append(t)
         if features:
-            # 用換行分隔，之後你要 split 也方便
             result["環境特色"] = "\n".join(features)
 
-        # ===== 地圖連結（a#otherfunc1 的 fancybox 連結） =====
+        # 地圖連結
         map_btn = soup.select_one("a#otherfunc1")
-        map_url = ""
         if map_btn and map_btn.has_attr("onclick"):
             onclick_text = map_btn["onclick"]
             m = re.search(r"fancybox\('([^']+)'", onclick_text)
             if m:
-                map_url = m.group(1)
+                result["地圖連結"] = m.group(1)
 
-        if map_url:
-            result["地圖連結"] = map_url
+        # 主圖 + 圖片列表（這裡先放主圖，後面 normalize 再展開）
+        img = build_image_url(url)
+        if img:
+            result["image_url"] = img
 
-        # ===== 物件編號（從網址 query string 抓 No=）=====
-        m = re.search(r"[?&]No=([A-Z0-9]+)", url, flags=re.I)
-        if m:
-            result.setdefault("物件編號", m.group(1))
+        # 保險：如果頁面改版仍保留 No
+        if not result.get("物件編號") and house_id:
+            result["物件編號"] = house_id
 
         return result
 
     except Exception as e:
-        print(f"⚠ extract_info_simple 錯誤：{url} → {e}")
-        return {"網址": url, "錯誤": str(e)}
-
+        result["錯誤"] = str(e)
+        # 失敗也保住 No
+        if house_id:
+            result["物件編號"] = house_id
+        return result
 
 # =========================================================================
-# 3. TXT → chunk Collection 存 Firestore：generate_aiwu_json_from_txt
+# batch_id / latest meta
 # =========================================================================
+def _make_batch_id(date_str: Optional[str] = None) -> str:
+    date_str = date_str or datetime.now().strftime("%Y%m%d")
+    # 以秒級時間避免同日重跑覆蓋
+    return f"{date_str}_{datetime.now().strftime('%H%M%S')}"
 
-def generate_aiwu_json_from_txt(txt_path: str, chunk_size: int = 300):
-    """
-    讀取 TXT → 逐筆抓 Ecatalog 資料 → 得到 all_rows (list[dict])
-    然後切成多個 chunk，寫入：
-      集合名稱：完整型錄資料YYYYMMDD
-      文件：chunk_0001, chunk_0002, ...
-      欄位：
-        - chunk_index  (第幾個 chunk，從 1 開始)
-        - row_count    (這個 chunk 裡有幾筆)
-        - rows         (實際的物件陣列)
-        - created_at   (時間戳)
+def set_latest_batch_id(batch_id: str, source: str, url_count: int, unique_house_count: int, chunk_collection: str):
+    payload = {
+        "batch_id": batch_id,
+        "source": source,
+        "url_count": url_count,
+        "unique_house_count": unique_house_count,
+        "chunk_collection": chunk_collection,
+        "updated_at": firestore.SERVER_TIMESTAMP,
+    }
+    db.collection(AIWU_META_COLLECTION).document(AIWU_LATEST_DOC).set(payload, merge=True)
 
-    ✅ 不再寫入 aiwu_json（避免之前 nested entity 的錯誤）
-    ✅ 仍會在 aiwu_txt 裡存一份網址列表與原始 TXT 內容（方便你查）
-    """
+def get_latest_batch_id() -> Optional[str]:
+    try:
+        doc = db.collection(AIWU_META_COLLECTION).document(AIWU_LATEST_DOC).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict() or {}
+        bid = (data.get("batch_id") or "").strip()
+        return bid or None
+    except Exception:
+        return None
+
+# =========================================================================
+# 3. TXT → chunk Collection：完整型錄資料YYYYMMDD（不去重）
+#    同時寫 aiwu_txt
+# =========================================================================
+def generate_aiwu_json_from_txt(txt_path: str, chunk_size: int = 300, batch_id: Optional[str] = None):
     log_lines = []
 
     def log(msg: str):
-        print(msg)
+        tlog(msg)
         log_lines.append(msg)
 
     log(f"🟢 讀取 TXT：{txt_path}")
 
-    # 讀 TXT 裡的網址
     with open(txt_path, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
 
     if not urls:
-        msg = "TXT 檔裡沒有任何網址，無法產生 chunk。"
-        log(f"❌ {msg}")
-        raise RuntimeError(msg)
+        raise RuntimeError("TXT 檔裡沒有任何網址")
 
     total = len(urls)
-    log(f"🔢 本次實際要處理 {total} 筆網址")
+    unique_cnt, unique_ids = count_unique_house_ids_from_txt(txt_path)
+    log(f"🔢 TXT 網址數：{total}；唯一物件編號數（No 去重）：{unique_cnt}")
 
     all_rows = []
     for i, url in enumerate(urls, 1):
-        log(f"[{i}/{total}] 擷取：{url}")
-        info = extract_info_simple(url)
-        all_rows.append(info)
+        if i == 1 or i % 25 == 0 or i == total:
+            log(f"…進度 {i}/{total}")
+        all_rows.append(extract_info_simple(url))
 
-    # ========= 在 Firestore 存 aiwu_txt 紀錄（原始網址） =========
     date_str = datetime.now().strftime("%Y%m%d")
-    txt_doc_id = f"愛屋{date_str}"
-    txt_content = "\n".join(urls)
+    batch_id = batch_id or _make_batch_id(date_str=date_str)
 
+    txt_doc_id = f"愛屋{date_str}"
+    # 存 aiwu_txt
     try:
         db.collection(AIWU_TXT_COLLECTION).document(txt_doc_id).set({
             "created_at": firestore.SERVER_TIMESTAMP,
+            "batch_id": batch_id,
             "filename": os.path.basename(txt_path),
             "url_count": len(urls),
+            "unique_house_count": unique_cnt,
+            "unique_house_ids": list(sorted(unique_ids)),
             "urls": urls,
-            "raw_txt": txt_content,
-        })
-        log(f"☁ 已儲存 TXT 至 {AIWU_TXT_COLLECTION}/{txt_doc_id}")
+            "raw_txt": "\n".join(urls),
+        }, merge=True)
+        log(f"☁ 已儲存 TXT 至 {AIWU_TXT_COLLECTION}/{txt_doc_id}（batch_id={batch_id}）")
     except Exception as e:
         log(f"⚠ 寫入 {AIWU_TXT_COLLECTION}/{txt_doc_id} 失敗：{e}")
 
-    # ========= 建立 chunk Collection：完整型錄資料YYYYMMDD =========
-    collection_name = f"完整型錄資料{date_str}"
-    log(f"📚 開始寫入 Firestore：集合 {collection_name}")
+    # 建 chunk collection（同日重跑你可能想覆蓋：這裡保留「同名集合清空」行為）
+    collection_name = f"{CHUNK_PREFIX}{date_str}"
+    log(f"📚 寫入 Firestore：集合 {collection_name}（batch_id={batch_id}）")
 
-    # 先清掉同名舊集合（避免混資料）
+    # 清掉同名舊集合（同日重跑）
     try:
         for doc in db.collection(collection_name).stream():
             db.collection(collection_name).document(doc.id).delete()
         log(f"🧹 已清空舊集合：{collection_name}")
     except Exception as e:
-        log(f"⚠ 清空舊集合 {collection_name} 失敗（可能本來就不存在）：{e}")
+        log(f"⚠ 清空舊集合 {collection_name} 失敗：{e}")
 
-    # 分 chunk
-    chunks = [
-        all_rows[i:i + chunk_size]
-        for i in range(0, len(all_rows), chunk_size)
-    ]
-
+    chunks = [all_rows[i:i + chunk_size] for i in range(0, len(all_rows), chunk_size)]
     for idx, chunk in enumerate(chunks, start=1):
         chunk_id = f"chunk_{idx:04d}"
-        try:
-            db.collection(collection_name).document(chunk_id).set({
-                "chunk_index": idx,
-                "row_count": len(chunk),
-                "rows": chunk,
-                "created_at": firestore.SERVER_TIMESTAMP,
-            })
-            log(f"📄 已寫入 {collection_name}/{chunk_id} 共 {len(chunk)} 筆")
-        except Exception as e:
-            log(f"⚠ 寫入 {collection_name}/{chunk_id} 失敗：{e}")
+        db.collection(collection_name).document(chunk_id).set({
+            "batch_id": batch_id,
+            "chunk_index": idx,
+            "row_count": len(chunk),
+            "rows": chunk,
+            "created_at": firestore.SERVER_TIMESTAMP,
+        })
+        log(f"📄 已寫入 {collection_name}/{chunk_id} 共 {len(chunk)} 筆")
 
-    log("✅ TXT → CHUNK → FIRESTORE 完成")
+    # ✅ 寫 latest batch meta（讓前台不混舊）
+    set_latest_batch_id(
+        batch_id=batch_id,
+        source="txt->chunk",
+        url_count=len(urls),
+        unique_house_count=unique_cnt,
+        chunk_collection=collection_name,
+    )
 
+    log("✅ TXT → CHUNK 完成")
     return {
-        "doc_id": collection_name,          # 讓後台訊息可以顯示集合名稱
-        "count": len(all_rows),             # 總筆數
-        "chunks": len(chunks),              # chunk 數量
+        "batch_id": batch_id,
+        "doc_id": collection_name,
+        "count": len(all_rows),                # 1078
+        "unique_house_count": unique_cnt,      # 1057
+        "chunks": len(chunks),
         "log": "\n".join(log_lines),
     }
 
-
 # =========================================================================
-# 4. 共用欄位處理
+# 4. row 正規化 + image_list
 # =========================================================================
-
-def build_image_url(link: str):
-    """從 Ecatalog 連結推回主圖 a.jpg"""
-    try:
-        no_match = re.search(r'[?&]No=([A-Z0-9]+)', link, flags=re.I)
-        aid_match = re.search(r'[?&]AID=([A-Z0-9]+)', link, flags=re.I)
-        if no_match and aid_match:
-            no = no_match.group(1)
-            aid = aid_match.group(1)
-            return f"https://hq.houseol.com.tw/images/pictures/{aid}{no}a.jpg"
-    except Exception:
-        return None
-    return None
-
-
 def normalize_row_for_aiwu_rows(raw: dict) -> dict:
-    """
-    把各種來源的欄位整理成統一格式
-    給前台用的 df_raw / aiwu_rows
-    """
-    row = dict(raw)
+    row = dict(raw or {})
 
-    # 1. 網址 / EDM 連結
+    # 網址
     if not row.get("網址"):
-        if row.get("EDM連結"):
-            row["網址"] = row["EDM連結"]
-        elif row.get("網址連結"):
-            row["網址"] = row["網址連結"]
+        for k in ["EDM連結", "網址連結"]:
+            if row.get(k):
+                row["網址"] = row[k]
+                break
 
-    # 2. 物件編號
+    # 物件編號
     house_id = str(row.get("物件編號", "")).strip()
     if not house_id:
-        url = row.get("網址") or row.get("EDM連結") or ""
-        m = re.search(r"[?&]No=([A-Z0-9]+)", url, flags=re.I)
-        if m:
-            house_id = m.group(1)
+        house_id = extract_house_id_from_url(row.get("網址", "") or "")
     if house_id:
         row["物件編號"] = house_id
 
-    # 3. 價格欄位 → 委託總價
-    if "委託總價" not in row:
-        for key in ["總價", "總價(萬)", "委託總價(萬)"]:
-            if key in row and row.get(key):
-                row["委託總價"] = row[key]
-                break
-
-    # 4. 主建物坪 / 建物面積
-    if "主建物坪" not in row:
-        for key in ["主建物坪", "建物面積", "建坪"]:
-            if key in row and row.get(key):
-                row["主建物坪"] = row[key]
-                break
-
-    # 5. 屋齡
-    if "屋齡" not in row:
-        for key in ["屋齡(年)", "屋齡年數"]:
-            if key in row and row.get(key):
-                row["屋齡"] = row[key]
-                break
-
-    # 6. 圖片網址（主圖）
-    if "image_url" not in row or not row.get("image_url"):
+    # 主要圖片
+    if not row.get("image_url"):
         if row.get("圖片連結"):
-            imgs = str(row["圖片連結"]).split(",")
+            imgs = [u.strip() for u in str(row["圖片連結"]).split(",") if u.strip()]
             if imgs:
-                row["image_url"] = imgs[0].strip()
+                row["image_url"] = imgs[0]
         elif row.get("網址"):
             img = build_image_url(str(row["網址"]))
             if img:
@@ -508,77 +513,68 @@ def normalize_row_for_aiwu_rows(raw: dict) -> dict:
 
     return row
 
+def _build_image_list(row: dict) -> List[str]:
+    image_list = row.get("image_list")
+    if isinstance(image_list, list) and image_list:
+        return image_list
 
-def add_image_list_to_row(row: dict) -> dict:
-    """
-    在同步階段就把圖片 a～t 全部塞進 row['image_list'] 裡
-    優先使用『圖片連結』欄位，否則由 image_url 推斷 a~t
-    """
-    # 若已經有 image_list，就不重複處理
-    if isinstance(row.get("image_list"), list) and row["image_list"]:
-        return row
-
-    # 1️⃣ 若有「圖片連結」欄位（多個逗號分隔）
     imgs_field = row.get("圖片連結")
     if imgs_field:
-        img_list = [u.strip() for u in str(imgs_field).split(",") if u.strip()]
-        if img_list:
-            row["image_list"] = img_list
-            return row
+        image_list = [u.strip() for u in str(imgs_field).split(",") if u.strip()]
+        if image_list:
+            return image_list
 
-    # 2️⃣ 退回 image_url 推 a~t
     image_url = row.get("image_url")
+    if image_url:
+        return expand_houseol_images(image_url)
 
-    if not image_url:
-        # 再由網址反推
-        link = row.get("網址") or row.get("EDM連結")
-        if link:
-            image_url = build_image_url(str(link))
+    link = row.get("網址") or row.get("EDM連結")
+    if link:
+        img = build_image_url(str(link))
+        if img:
+            return expand_houseol_images(img)
 
-    if not image_url:
-        return row  # 沒有圖片資訊，直接回傳
+    return []
 
-    # 嘗試用 regex 擷取 prefix（去掉最後一個字母+副檔名）
-    # 例如: https://.../H229QQ00007697a.jpg → prefix = .../H229QQ00007697
-    m = re.search(r"^(?P<prefix>.+)[a-zA-Z]\.(jpg|jpeg|png|gif)$", image_url)
-    if not m:
-        # 格式不是 a.jpg 類型，就直接用單張
-        row["image_list"] = [image_url]
+def add_image_list_to_row(row: dict) -> dict:
+    if isinstance(row.get("image_list"), list) and row["image_list"]:
         return row
-
-    prefix = m.group("prefix")
-
-    img_list = []
-    for ch in "abcdefghijklmnopqrst":
-        url = f"{prefix}{ch}.jpg"
-        img_list.append(url)
-
-    row["image_list"] = img_list
+    row["image_list"] = _build_image_list(row)
     return row
 
+# =========================================================================
+# 5. fingerprint：避免每次都重產 HTML（針對唯一 No）
+# =========================================================================
+def _fingerprint_row(row: dict) -> str:
+    stable = {
+        "房屋標題": row.get("房屋標題", ""),
+        "區域": row.get("區域", ""),
+        "委託總價": row.get("委託總價", row.get("總價", "")),
+        "登記坪數": row.get("登記坪數", ""),
+        "屋齡": row.get("屋齡", ""),
+        "網址": row.get("網址", ""),
+        "地圖連結": row.get("地圖連結", ""),
+        "環境特色": row.get("環境特色", ""),
+        "image_url": row.get("image_url", ""),
+        "image_list": row.get("image_list", []),
+    }
+    s = json.dumps(stable, ensure_ascii=False, sort_keys=True)
+    return hashlib.md5(s.encode("utf-8")).hexdigest()
 
 # =========================================================================
-# 5. 單一物件 HTML：generate_one_html_from_json
+# 6. 產生單一物件頁 HTML → Storage + sedm_pages（唯一 No）
 # =========================================================================
 def generate_one_html_from_json(house_id: str, row: dict):
-    """
-    用 sedm.html 模板產生一個物件頁 HTML，
-    上傳到 Firebase Storage，並在 sedm_pages 裡紀錄 page_url。
-    """
-
     image_list = _build_image_list(row)
-
-    # 靜態檔案 base URL
     static_base = "https://ellenfindhome.com/static"
 
-    # 在 Flask app context 裡 render sedm.html
     with current_app.app_context():
         html = render_template(
             "sedm.html",
             image_list=image_list,
             title=row.get("房屋標題", ""),
             region=row.get("區域", ""),
-            total_price=row.get("委託總價", ""),
+            total_price=row.get("委託總價", row.get("總價", "")),
             reg_area=row.get("登記坪數", ""),
             building_area=row.get("建物面積", ""),
             main_area=row.get("主建物坪", ""),
@@ -590,7 +586,7 @@ def generate_one_html_from_json(house_id: str, row: dict):
             usage_zone=row.get("使用分區", ""),
             base_area=row.get("總基地坪", ""),
             floor_info=row.get("樓別/樓高", ""),
-            layout=row.get("房/廳/衛", ""),
+            layout=row.get("房/廳/衛", row.get("房廳衛", "")),
             parking_type=row.get("車位型式", ""),
             parking_num=row.get("車位/編號", ""),
             status_type=row.get("現況類別/謄本用途", ""),
@@ -618,16 +614,12 @@ def generate_one_html_from_json(house_id: str, row: dict):
             static_base=static_base,
         )
 
-    # 上傳到 Storage
     blob_path = f"sedm_pages/{house_id}.html"
     blob = bucket.blob(blob_path)
     blob.upload_from_string(html, content_type="text/html; charset=utf-8")
-
-    # ⭐ 關鍵：設為公開
     blob.make_public()
     page_url = blob.public_url
 
-    # 寫回 Firestore：sedm_pages
     db.collection(SEDM_PAGES_COLLECTION).document(house_id).set(
         {
             "house_id": house_id,
@@ -637,249 +629,364 @@ def generate_one_html_from_json(house_id: str, row: dict):
         },
         merge=True,
     )
-
-    print(f"✅ 產出並上傳 sedm_pages/{house_id}.html → {page_url}")
+    return page_url
 
 # =========================================================================
-# 6. 讀取「最新」完整型錄資料（chunk 版本）
+# 7. 讀取最新 chunk collection（完整型錄資料YYYYMMDD）
 # =========================================================================
-
-def _load_latest_from_chunk_collections():
+def _load_latest_from_chunk_collections() -> Tuple[Optional[str], List[dict], Optional[str]]:
     """
-    掃描所有 collection，找出名字以『完整型錄資料』開頭的，
-    選日期最大的那個，把底下的 chunk_000x / rows[] 串在一起。
+    回傳：
+      latest_collection_name, all_rows(不去重), batch_id(若找得到)
     """
     latest_name = None
-
     for coll in db.collections():
-        coll_id = coll.id
-        if coll_id.startswith("完整型錄資料"):
-            if (latest_name is None) or (coll_id > latest_name):
-                latest_name = coll_id
+        cid = coll.id
+        if cid.startswith(CHUNK_PREFIX):
+            if (latest_name is None) or (cid > latest_name):
+                latest_name = cid
 
     if not latest_name:
-        return None, None
+        return None, [], None
 
-    print(f"📚 使用 chunk 版完整型錄：{latest_name}")
-    all_rows = []
+    all_rows: List[dict] = []
+    batch_id = None
 
     for doc in db.collection(latest_name).stream():
         d = doc.to_dict() or {}
+        if not batch_id:
+            batch_id = (d.get("batch_id") or "").strip() or None
         rows = d.get("rows") or []
         if isinstance(rows, list):
-            all_rows.extend(rows)
+            for r in rows:
+                if isinstance(r, dict):
+                    all_rows.append(r)
 
-    return latest_name, all_rows
-
+    return latest_name, all_rows, batch_id
 
 # =========================================================================
-# 7. 核心同步：sync_html_from_firestore_json（其實是 chunk）
+# 8-A. 同步 aiwu_items（不去重）：讓前台顯示 1078
+#      每一筆 doc 都要有 batch_id，避免混舊
 # =========================================================================
-
-def sync_html_from_firestore_json():
+def sync_items_from_latest_chunk(purge_same_batch_first: bool = True) -> dict:
     """
-    從 Firestore 取得「最新完整型錄資料」：
-    - 只用 chunk 版本：完整型錄資料YYYYMMDD / chunk_000x / rows[]
-    然後同步：
-    - 寫入 / 更新 aiwu_rows（給前台列表用）
-    - 產生 / 更新 sedm_pages：把 sedm.html 渲染好，上傳到 Storage，並寫入 page_url
-    - 多出來的舊物件會刪除（代表下架）
+    ✅ 前台用（不去重）
+    - 從最新 chunk 讀出 all_rows（例如 1078）
+    - 寫入 aiwu_items：每 row 一筆
+    - doc_id：使用 md5(url) + idx 避免重複
+    - 每筆寫 batch_id
     """
+    src_id, rows, batch_id_from_chunk = _load_latest_from_chunk_collections()
+    if not src_id or not rows:
+        raise RuntimeError("找不到『完整型錄資料YYYYMMDD』，請先跑 generate_aiwu_json_from_txt")
 
-    # 1️⃣ 先把「最新的完整型錄資料YYYYMMDD」整批 rows 抓出來
-    src_id, data = _load_latest_from_chunk_collections()
-    if not data:
-        raise RuntimeError(
-            "找不到名稱開頭為『完整型錄資料』的 chunk collection，"
-            "請先執行『搜尋愛屋網頁』產生最新完整型錄。"
-        )
+    batch_id = batch_id_from_chunk or get_latest_batch_id() or _make_batch_id()
+    tlog(f"🟢 sync_items：來源 {src_id} rows={len(rows)} batch_id={batch_id}")
 
-    print(f"🟢 使用來源：{src_id}，原始筆數：{len(data)}")
+    # 更新 latest meta（保險：確保前台永遠有最新 batch）
+    # url_count/unique_house_count 這裡無法精準算 url_count（因為 rows 可能含錯誤），先填 rows count
+    unique_ids = {extract_house_id_from_url((r.get("網址") or "")) for r in rows}
+    unique_ids.discard("")
+    set_latest_batch_id(
+        batch_id=batch_id,
+        source="chunk->items",
+        url_count=len(rows),
+        unique_house_count=len(unique_ids),
+        chunk_collection=src_id,
+    )
 
-    # 2️⃣ 整理成：{物件編號: row}
-    rows_by_id = {}
-    for item in data:
-        # 正規化欄位名稱 / 資料型態，方便前台統一使用
+    # 同批次先清掉（避免重跑同批次造成重複）
+    if purge_same_batch_first:
+        try:
+            q = db.collection(AIWU_ITEMS_COLLECTION).where("batch_id", "==", batch_id).stream()
+            deleted = 0
+            for d in q:
+                d.reference.delete()
+                deleted += 1
+            if deleted:
+                tlog(f"🧹 已清掉 aiwu_items 同 batch_id 舊資料：{deleted} 筆")
+        except Exception as e:
+            tlog("⚠ 清除同 batch_id 舊 aiwu_items 失敗：", e)
+
+    written = 0
+    failed = 0
+
+    for idx, raw in enumerate(rows, start=1):
+        try:
+            row = normalize_row_for_aiwu_rows(raw)
+            row = add_image_list_to_row(row)
+
+            url = str(row.get("網址") or "").strip()
+            hid = str(row.get("物件編號") or extract_house_id_from_url(url)).strip()
+            if hid:
+                row["物件編號"] = hid
+
+            # doc id：用 url hash + idx，確保「同一 url」也能保留多筆（極少但保險）
+            url_key = url or f"no_url_{idx}"
+            md = hashlib.md5(url_key.encode("utf-8")).hexdigest()[:12]
+            doc_id = f"{batch_id}_{idx:04d}_{md}"
+
+            row["_idx"] = idx
+            row["batch_id"] = batch_id
+            row["source_chunk"] = src_id
+            row["updated_at"] = firestore.SERVER_TIMESTAMP
+
+            row = _sanitize_firestore_dict(row)
+            db.collection(AIWU_ITEMS_COLLECTION).document(doc_id).set(row, merge=False)
+            written += 1
+
+            if idx == 1 or idx % 50 == 0 or idx == len(rows):
+                tlog(f"…sync_items 進度 {idx}/{len(rows)}")
+
+        except Exception as e:
+            failed += 1
+            if failed <= 5:
+                tlog("❌ sync_items 寫入失敗 idx=", idx, "err=", e)
+
+    tlog(f"✅ sync_items 完成：寫入 {written} 筆（預期 {len(rows)}），失敗 {failed} 筆")
+    return {
+        "source": src_id,
+        "batch_id": batch_id,
+        "expected": len(rows),
+        "written": written,
+        "failed": failed,
+    }
+
+# =========================================================================
+# 8-B. 核心同步：唯一 No（aiwu_rows）+ sedm_pages（1057）
+# =========================================================================
+def sync_html_from_firestore_json(force_regen_html: bool = False):
+    res = _load_latest_from_chunk_collections()
+
+    # 兼容回傳 (src_id, data) 或 (src_id, data, extra...)
+    if isinstance(res, tuple) and len(res) >= 2:
+        src_id, data = res[0], res[1]
+    else:
+        # 保底：避免整個流程直接掛
+        src_id, data = None, []
+
+    print(f"🟢 使用來源：{src_id}，chunk rows 筆數：{len(data)}", flush=True)
+
+    # ① 以「物件編號」去重 rows_by_id
+    rows_by_id: Dict[str, dict] = {}
+    failed_ids: List[str] = []
+
+    total_data = len(data)
+    print(f"🔄 normalize/去重開始 data={total_data}", flush=True)
+
+    for i, item in enumerate(data, start=1):
+        if i == 1 or i % 20 == 0 or i == total_data:
+            print(f"⏳ 去重進度 {i}/{total_data}", flush=True)
+
         row = normalize_row_for_aiwu_rows(item)
+        # ✅ 關鍵：先不要展開 image_list（會超慢）
+        # row = add_image_list_to_row(row)
 
-        # 這裡如果還想在 row 裡保留展開後的圖片清單，可以加這行；
-        # 之後 generate_one_html_from_json 會再保險一次處理圖片
-        row = add_image_list_to_row(row)
-
-        house_id = str(row.get("物件編號", "")).strip()
-        if not house_id:
+        hid = str(row.get("物件編號", "")).strip()
+        if not hid:
+            hid = extract_house_id_from_url(row.get("網址", "") or "")
+            if hid:
+                row["物件編號"] = hid
+        if not hid:
             continue
-        rows_by_id[house_id] = row
+
+        if row.get("錯誤"):
+            failed_ids.append(hid)
+
+        rows_by_id[hid] = row
 
     new_ids = set(rows_by_id.keys())
-    print(f"📌 有效物件編號數量：{len(new_ids)}")
+    print(f"📌 最新唯一物件編號數（去重後）：{len(new_ids)}", flush=True)
+    if failed_ids:
+        print(f"⚠ 單頁抓取失敗但仍占位（不會少筆）：{len(set(failed_ids))} 筆", flush=True)
 
-    if not new_ids:
-        raise RuntimeError(
-            "完整型錄資料裡找不到任何有效的『物件編號』，"
-            "為避免把舊資料全部刪光，這次同步不會動任何資料。"
+    # ② 以 aiwu_rows 當舊資料基準
+    print("📥 讀取 Firestore aiwu_rows 現有資料中...", flush=True)
+    existing_rows = {d.id: (d.to_dict() or {}) for d in db.collection(AIWU_ROWS_COLLECTION).stream()}
+    old_ids = set(existing_rows.keys())
+
+    to_add = new_ids - old_ids
+    to_delete = old_ids - new_ids
+    to_check = (new_ids & old_ids)
+
+    print(
+        f"➕ 缺少需補：{len(to_add)}；🗑 下架需刪：{len(to_delete)}；🔎 需比對：{len(to_check)}",
+        flush=True
+    )
+
+    added = updated = deleted = 0
+    html_regen = 0
+
+    # ====== 進度 log 設定 ======
+    ids_sorted = sorted(new_ids)
+    total_ids = len(ids_sorted)
+    t_start = time.time()
+
+    def _fmt_sec(sec: float) -> str:
+        sec = max(0, int(sec))
+        m, s = divmod(sec, 60)
+        h, m = divmod(m, 60)
+        if h:
+            return f"{h}h{m}m{s}s"
+        if m:
+            return f"{m}m{s}s"
+        return f"{s}s"
+
+    def _progress_log(idx: int, hid: str, extra: str = ""):
+        elapsed = time.time() - t_start
+        rate = elapsed / max(1, idx)
+        eta = rate * (total_ids - idx)
+        msg = (
+            f"⏳ 同步進度 {idx}/{total_ids} | "
+            f"已耗時 {_fmt_sec(elapsed)} | ETA {_fmt_sec(eta)} | hid={hid}"
         )
+        if extra:
+            msg += f" | {extra}"
+        print(msg, flush=True)
 
-    # 3️⃣ 讀現在 sedm_pages 裡已經存在的物件，用來判斷新增 / 更新 / 刪除
-    existing_sedm_docs = {
-        d.id: d.to_dict() for d in db.collection(SEDM_PAGES_COLLECTION).stream()
-    }
-    old_ids = set(existing_sedm_docs.keys())
+    print("🚀 開始逐筆同步 aiwu_rows / sedm_pages ...", flush=True)
 
-    missing = new_ids - old_ids   # 新增
-    common = new_ids & old_ids    # 更新
-    to_delete = old_ids - new_ids # 下架
+    # ③ 寫入/更新 aiwu_rows（每筆都不中斷）
+    for idx, hid in enumerate(ids_sorted, start=1):
+        # 每 20 筆印一次，另外第一筆、最後一筆一定印
+        if idx == 1 or idx == total_ids or idx % 20 == 0:
+            _progress_log(idx, hid)
 
-    print(f"➕ 新增 {len(missing)}，🔁 更新 {len(common)}，🗑 準備刪除 {len(to_delete)}")
+        row = rows_by_id[hid]
+        row_fp = _fingerprint_row(row)
 
-    # 4️⃣ 新增 & 更新（aiwu_rows + sedm_pages）
-    for house_id in sorted(new_ids):
-        row = rows_by_id[house_id]
+        old_doc = existing_rows.get(hid, {})
+        old_fp = old_doc.get("_fp", "")
 
-        # --- 4-1. 更新 / 寫入 aiwu_rows ---
-        try:
+        changed = (row_fp != old_fp)
+        is_missing = (hid in to_add)
+
+        if is_missing or changed:
             save_row = dict(row)
-            save_row["物件編號"] = house_id
-            # 給前台列表用的詳細頁連結（/house/<house_id>，會再 redirect 到 Storage 靜態頁）
-            save_row["detail_url"] = f"/house/{house_id}"
+            save_row["物件編號"] = hid
+            save_row["detail_url"] = f"/house/{hid}"
+            save_row["_fp"] = row_fp
+            save_row["updated_at"] = firestore.SERVER_TIMESTAMP
 
-            db.collection(AIWU_ROWS_COLLECTION).document(house_id).set(
-                save_row,
-                merge=True,
-            )
-        except Exception as e:
-            print(f"⚠ 寫入 {AIWU_ROWS_COLLECTION}/{house_id} 失敗：{e}")
+            try:
+                save_row = _sanitize_firestore_dict(save_row)
+                db.collection(AIWU_ROWS_COLLECTION).document(hid).set(save_row, merge=True)
+            except Exception as e:
+                print(f"❌ 寫入 aiwu_rows 失敗 {hid}: {e}", flush=True)
+                continue
 
-        # --- 4-2. 產生 / 更新 sedm_pages HTML ---
-        #   generate_one_html_from_json：
-        #   - 用 sedm.html 模板 render 出完整 HTML
-        #   - 上傳到 Storage：sedm_pages/<house_id>.html
-        #   - 在 sedm_pages collection 裡寫入 page_url
+            if is_missing:
+                added += 1
+            else:
+                updated += 1
+
+        # HTML 產生條件
+        need_html = force_regen_html or is_missing or changed
+        if not need_html:
+            try:
+                sp = db.collection(SEDM_PAGES_COLLECTION).document(hid).get()
+                if not sp.exists:
+                    need_html = True
+            except Exception:
+                need_html = True
+
+        if need_html:
+            try:
+                # ✅ 只有要產 HTML 的才補 image_list
+                row = add_image_list_to_row(row)
+                generate_one_html_from_json(hid, row)
+
+                html_regen += 1
+            except Exception as e:
+                print(f"⚠ 產生 HTML 失敗 {hid}: {e}", flush=True)
+
+    # ④ 刪除下架（aiwu_rows + sedm_pages + storage）
+    if to_delete:
+        print(f"🗑 開始刪除下架物件：{len(to_delete)} 筆 ...", flush=True)
+
+    for i, hid in enumerate(sorted(to_delete), start=1):
+        # 刪除也每 20 筆顯示一次
+        if i == 1 or i == len(to_delete) or i % 20 == 0:
+            print(f"🗑 刪除進度 {i}/{len(to_delete)} hid={hid}", flush=True)
+
         try:
-            generate_one_html_from_json(house_id, row)
+            db.collection(AIWU_ROWS_COLLECTION).document(hid).delete()
+            db.collection(SEDM_PAGES_COLLECTION).document(hid).delete()
+            try:
+                bucket.blob(f"sedm_pages/{hid}.html").delete()
+            except Exception:
+                pass
+            deleted += 1
         except Exception as e:
-            print(f"⚠ 產生 sedm_pages/{house_id}.html 失敗：{e}")
+            print(f"⚠ 刪除 {hid} 失敗：{e}", flush=True)
 
-    # 5️⃣ 刪除「已下架」物件（sedm_pages + aiwu_rows）
-    for house_id in sorted(to_delete):
-        try:
-            db.collection(SEDM_PAGES_COLLECTION).document(house_id).delete()
-            db.collection(AIWU_ROWS_COLLECTION).document(house_id).delete()
-            print(f"🗑 已刪除 {house_id}（sedm_pages + aiwu_rows）")
-        except Exception as e:
-            print(f"⚠ 刪除 {house_id} 失敗：{e}")
+    # ⑤ 最終一致性校驗
+    print("🔎 最終一致性校驗中...", flush=True)
+    final_ids = [d.id for d in db.collection(AIWU_ROWS_COLLECTION).stream()]
+    final_count = len(final_ids)
 
-    result = {
-        "added": len(missing),
-        "updated": len(common),
-        "deleted": len(to_delete),
+    print(f"✅ 最終 aiwu_rows 筆數：{final_count}", flush=True)
+    print(f"✅ 預期最新唯一物件數：{len(new_ids)}", flush=True)
+
+    if final_count != len(new_ids):
+        print("❌ 筆數不一致：代表同步過程中有寫入失敗或權限/連線問題。", flush=True)
+        missing_now = sorted(list(new_ids - set(final_ids)))
+        if missing_now:
+            print(f"❌ 目前仍缺少 {len(missing_now)} 筆，前 30 筆：{missing_now[:30]}", flush=True)
+
+    elapsed_total = time.time() - t_start
+    print(
+        f"🎉 同步完成 | added={added} updated={updated} deleted={deleted} html_regenerated={html_regen} "
+        f"| total_time={_fmt_sec(elapsed_total)}",
+        flush=True
+    )
+
+    return {
+        "source": src_id,
+        "expected": len(new_ids),
+        "final": final_count,
+        "added": added,
+        "updated": updated,
+        "deleted": deleted,
+        "html_regenerated": html_regen,
+        "failed_page_count": len(set(failed_ids)),
     }
-    print(f"📊 sync_html_from_firestore_json 完成：{result}")
-    return result
-
 
 # =========================================================================
-# 8. 一鍵 Pipeline（給 /admin/aiwu_update?action=pipeline 用）
+# 8-C. 一次做：先 items（1078）再 rows/html（1057）
 # =========================================================================
+def sync_items_and_rows_from_latest_chunk(force_regen_html: bool = False) -> dict:
+    t0 = time.time()
+    r_items = sync_items_from_latest_chunk()
+    r_rows = sync_html_from_firestore_json(force_regen_html=force_regen_html)
+    tlog("⏱ sync_items_and_rows total secs =", round(time.time() - t0, 2))
+    return {"items": r_items, "rows": r_rows}
 
-def run_aiwu_pipeline(headless=True):
-    """
-    一鍵：登入 + 抓網址存 TXT → 轉 chunk Collection → 同步 HTML / aiwu_rows / sedm_pages
-    """
+# =========================================================================
+# 9. 一鍵 Pipeline（selenium 抓 -> txt -> chunk -> items -> rows/html）
+# =========================================================================
+def run_aiwu_pipeline(headless=True, force_regen_html: bool = False):
     url_count, txt_path = crawl_aiwu_and_save_txt(headless=headless)
+
+    unique_cnt, _ = count_unique_house_ids_from_txt(txt_path)
+    tlog(f"📌 TXT 網址數：{url_count}")
+    tlog(f"📌 唯一物件編號數（No 去重）：{unique_cnt}")
+
     json_result = generate_aiwu_json_from_txt(txt_path)
-    sync_result = sync_html_from_firestore_json()
+    # ✅ 用最新 chunk 同步前台 items 以及唯一 rows/html
+    sync_pack = sync_items_and_rows_from_latest_chunk(force_regen_html=force_regen_html)
 
     return {
         "url_count": url_count,
-        "json_count": json_result["count"],
-        "added_html": sync_result["added"],
-        "changed_html": sync_result["updated"],
-        "deleted_html": sync_result["deleted"],
+        "unique_house_count": unique_cnt,
+        "chunk_rows_count": json_result["count"],               # 1078
+        "items_written": sync_pack["items"]["written"],         # 1078
+        "expected_final_unique": sync_pack["rows"]["expected"], # 1057
+        "final_rows_unique": sync_pack["rows"]["final"],        # 1057
+        "added_unique": sync_pack["rows"]["added"],
+        "updated_unique": sync_pack["rows"]["updated"],
+        "deleted_unique": sync_pack["rows"]["deleted"],
+        "html_regenerated": sync_pack["rows"]["html_regenerated"],
+        "failed_page_count": sync_pack["rows"]["failed_page_count"],
+        "batch_id": json_result["batch_id"],
     }
-
-from urllib.parse import quote
-def upload_html_to_storage(house_id: str, html: str):
-    blob_path = f"sedm/{house_id}.html"
-    blob = bucket.blob(blob_path)
-    blob.upload_from_string(html, content_type="text/html; charset=utf-8")
-
-    # ✅ 這個 URL 會走 Firebase Storage + Rules
-    encoded_path = quote(blob_path, safe="")
-    page_url = (
-        f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
-        f"{encoded_path}?alt=media"
-    )
-
-    db.collection("sedm_pages").document(house_id).set(
-        {
-            "page_url": page_url,
-            "storage_path": blob_path,
-        },
-        merge=True,
-    )
-    return page_url
-
-def _build_image_list(row: dict):
-    """
-    統一幫一筆 row 生出 image_list：
-
-    1. 如果 row 本來就有 image_list，就直接用
-    2. 優先用「圖片連結」欄位（逗號分隔）
-    3. 再用 image_url 展開 a～t
-    4. 再不行，從 網址 / EDM 連結 推出 a.jpg，再展開 a～t
-    """
-
-    # 1️⃣ 已經有 image_list 了就直接用
-    image_list = row.get("image_list")
-    if isinstance(image_list, list) and image_list:
-        return image_list
-
-    # 2️⃣ Firestore 裡的「圖片連結」欄位（多個逗號分隔）
-    imgs_field = row.get("圖片連結")
-    image_list = []
-    if imgs_field:
-        image_list = [u.strip() for u in str(imgs_field).split(",") if u.strip()]
-
-    # 3️⃣ 沒有的話，用 image_url 展開 a～t
-    if not image_list:
-        image_url = row.get("image_url")
-        if image_url:
-            image_list = expand_houseol_images(image_url)
-        else:
-            # 4️⃣ 再退一步：從 網址 / EDM 連結 推 a.jpg，再展開
-            url = row.get("網址") or row.get("EDM連結")
-            if url:
-                img = build_image_url(str(url))
-                if img:
-                    image_list = expand_houseol_images(img)
-
-    return image_list or []
-
-
-def upload_html_to_storage(house_id: str, html: str):
-    """
-    把單一物件的 HTML 上傳到 Firebase Storage，
-    路徑：sedm/<house_id>.html，並設為公開，最後寫回 Firestore。
-    """
-    blob_path = f"sedm/{house_id}.html"
-    blob = bucket.blob(blob_path)
-
-    # 寫入 HTML
-    blob.upload_from_string(html, content_type="text/html; charset=utf-8")
-
-    # 一定要設 public，前台訪客才不會 AccessDenied
-    blob.make_public()
-    page_url = blob.public_url
-
-    # 存回 sedm_pages 集合
-    db.collection(SEDM_PAGES_COLLECTION).document(house_id).set(
-        {
-            "page_url": page_url,
-            "storage_path": blob_path,
-        },
-        merge=True,
-    )
-
-    print(f"✅ 已產生並上傳 {blob_path} → {page_url}")
-    return page_url

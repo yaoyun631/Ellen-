@@ -119,10 +119,10 @@ autoClickAndExportUniqueUrls();</code></pre>
   <!-- B. 新按鈕：只用「最新 chunk」轉成一筆一筆的 aiwu_rows / sedm_pages -->
   <form method="post" class="mb-3">
     <input type="hidden" name="action" value="sync_chunks">
-    <button type="submit" class="btn btn-warning">
-      使用「最新 chunk」重新產生 aiwu_rows / sedm_pages
-    </button>
-  </form>
+  <button type="submit" class="btn btn-warning" name="action" value="sync_chunks">
+    使用「最新 chunk」重新產生 aiwu_rows / sedm_pages
+  </button>
+</form>
 
   
   {% if log_text %}
